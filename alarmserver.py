@@ -529,6 +529,7 @@ class EnvisalinkClient(LineOnlyReceiver):
             zoneName = self._config.ZONENAMES[zoneNumber]
             if zoneName:
                 ALARMSTATE['zone'][zoneNumber]['lastfault'] = zoneInfo['message']
+                ALARMSTATE['zone'][zoneNumber]['timerValue'] = zoneInfo['seconds']
                 logging.debug("%s (zone %i) %s", zoneName, zoneNumber, zoneInfo['message'])
                 for plugin in self.plugins:
                     plugin.zoneStatus(zoneNumber, zoneInfo['status'])
@@ -538,7 +539,6 @@ class EnvisalinkClient(LineOnlyReceiver):
     def convertZoneDump(self, theString):
 
         returnItems = []
-
         # every four characters
         inputItems = re.findall('....', theString)
         for inputItem in inputItems:
@@ -558,7 +558,6 @@ class EnvisalinkClient(LineOnlyReceiver):
 
             itemLastClosed = self.humanTimeAgo(timedelta(seconds=itemSeconds))
             status = ''
-
             if itemHexString == "FFFF":
                 itemLastClosed = "Currently Open"
                 status = 'open'
@@ -569,7 +568,7 @@ class EnvisalinkClient(LineOnlyReceiver):
                 itemLastClosed = "Last Closed " + itemLastClosed
                 status = 'closed'
 
-            returnItems.append({'message': str(itemLastClosed), 'status': status})
+            returnItems.append({'message': str(itemLastClosed), 'status': status, 'seconds': itemSeconds})
         return returnItems
 
     # public domain from https://pypi.python.org/pypi/ago/0.0.6
@@ -660,6 +659,8 @@ class AlarmServer(Resource):
             alarmcode = str(self._config.ALARMCODE)
 
         request.setHeader('content-type', 'application/json')
+        request.setHeader('Access-Control-Allow-Origin','*')
+				
         myPath = query.path
         if myPath[-1] == "/":
             myPath = myPath[:-1]
