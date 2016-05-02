@@ -32,6 +32,12 @@ class IconLED_Flags( ctypes.Union ):
                ]
     _anonymous_ = ("b")
 
+evl_Commands = {
+    'KeepAlive' : '00',
+    'ChangeDefaultPartition' : '01',
+    'DumpZoneTimers' : '02',
+    'PartitionKeypress' : '03'
+}
 
 evl_ResponseTypes = {
     'Login:' :  {'name' : 'Login Prompt', 'description' : 'Sent During Session Login Only.', 'handler' : 'login'},

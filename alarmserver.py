@@ -42,6 +42,7 @@ class AlarmServerConfig(BaseConfig):
         # call ancestor for common setup
         super(self.__class__, self).__init__(configfile)
 
+        self.PANELTYPE = 'HONEYWELL'
         self.LOGURLREQUESTS = self.read_config_var('alarmserver',
                                                    'logurlrequests',
                                                    True, 'bool')
@@ -136,45 +137,6 @@ class AlarmServerConfig(BaseConfig):
                                                            'armed_zero_entry_delay': False, 'alarm_fire_zone': False,
                                                            'trouble': False, 'ready': False, 'fire': False,
                                                            'armed_stay': False, 'alpha': False, 'beep': False}}
-
-
-class EnvisalinkClientFactory(ReconnectingClientFactory):
-
-    def __init__(self, config):
-        self._config = config
-
-    def buildProtocol(self, addr):
-        logging.debug("%s connection estblished to %s:%s", addr.type, addr.host, addr.port)
-        logging.debug("resetting connection delay")
-        self.resetDelay()
-        self.envisalinkClient = EnvisalinkClient(self._config)
-        # check on the state of the envisalink connection repeatedly
-        self._currentLoopingCall = LoopingCall(self.envisalinkClient.check_alive)
-        self._currentLoopingCall.start(1)
-        return self.envisalinkClient
-
-    def startedConnecting(self, connector):
-        logging.debug("Started to connect to Envisalink...")
-
-    def clientConnectionLost(self, connector, reason):
-        if not shuttingdown:
-            logging.debug('Lost connection to Envisalink.  Reason: %s', str(reason))
-            if hasattr(self, "_currentLoopingCall"):
-                try:
-                    self._currentLoopingCall.stop()
-                except:
-                    logging.error("Error trying to stop looping call, ignoring...")
-            ReconnectingClientFactory.clientConnectionLost(self, connector, reason)
-
-    def clientConnectionFailed(self, connector, reason):
-        logging.debug('Connection failed to Envisalink. Reason: %s', str(reason))
-        if hasattr(self, "_currentLoopingCall"):
-            try:
-                self._currentLoopingCall.stop()
-            except:
-                logging.error("Error trying to stop looping call, ignoring...")
-        ReconnectingClientFactory.clientConnectionFailed(self, connector,
-                                                         reason)
 
 
 class EnvisalinkClient(LineOnlyReceiver):
