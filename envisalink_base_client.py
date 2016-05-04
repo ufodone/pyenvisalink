@@ -1,40 +1,63 @@
-from twisted.protocols.basic import LineOnlyReceiver
-from datetime import datetime
-from datetime import timedelta
-from alarm_state import AlarmState
+import asyncio
+import threading
 import logging
+from alarm_state import AlarmState
 
-class EnvisalinkClient(LineOnlyReceiver):
+class EnvisalinkClient(asyncio.Protocol):
     def __init__(self, panel):
         # Are we logged in?
         self._loggedin = False
         self._alarmPanel = panel
+        self._eventLoop = asyncio.get_event_loop()
+        self._transport = None
 
+    def connect(self):
+        logging.info(str.format("Started to connect to Envisalink... at {0}:{1}", self._alarmPanel.host, self._alarmPanel.port))
+        coro = self._eventLoop.create_connection(lambda: self, self._alarmPanel.host, self._alarmPanel.port)
+        asyncio.ensure_future(coro)
+        workerThread = threading.Thread(target=self.runEventLoop, args=())
+        workerThread.start()
+        
+    def runEventLoop(self):
+        asyncio.set_event_loop(self._eventLoop)
+        self._eventLoop.run_forever()
+
+    def connection_made(self, transport):
+        logging.info("Connection Successful!")
+        self._transport = transport
+        #TODO setup the keepalive here?
+        
+    def connection_lost(self, exc):
+        self._loggedin = False
+        logging.error('The server closed the connection. Reconnecting...')
+        self.reconnect(5)
+
+    def reconnect(self, delay):
+        self._eventLoop.call_later(delay, self.connect)
+                             
     def keep_alive(self):
-        """Todo- make this abstract"""
         raise NotImplementedError()
             
-    def logout(self):
-        logging.debug("Resetting Envisalink client connection...")
+    def disconnect(self):
+        logging.debug("Shutting down Envisalink client connection...")
         self._loggedin = False
-        if hasattr(self, 'transport'):
-            self.transport.loseConnection()
+        self._eventLoop.call_soon_threadsafe(self._eventLoop.stop)
             
     def send_data(self, data):
         """Raw data send- just make sure it's encoded properly and logged."""
         logging.debug(str.format('TX > {0}', data.encode('ascii')))
-        self.sendLine(data.encode('ascii'))
+        self._transport.write((data + '\n').encode('ascii'))
     
     def parseHandler(self, rawInput):
         """When the envisalink contacts us- parse out which command and data."""
         raise NotImplementedError()
         
-    def lineReceived(self, input):
-        if input != '':
+    def data_received(self, data):
+        if data != '':
             cmd = {}
             logging.debug('----------------------------------------')
-            logging.debug(str.format('RX < {0}', input.decode('ascii')))
-            cmd = self.parseHandler(input.decode('ascii'))
+            logging.debug(str.format('RX < {0}', data.decode('ascii').strip()))
+            cmd = self.parseHandler(data.decode('ascii').strip())
             try:
                 logging.debug(str.format('calling handler: {0}', cmd['handler']))
                 handlerFunc = getattr(self, cmd['handler'])
@@ -59,12 +82,14 @@ class EnvisalinkClient(LineOnlyReceiver):
 
     def handle_login_success(self, data):
         self._loggedin = True
-        logging.info('Password accepted, session created')
+        logging.debug('Password accepted, session created')
 
     def handle_login_failure(self, data):
+        self._loggedin = False
         logging.error('Password is incorrect. Server is closing socket connection.')
 
     def handle_login_timeout(self, data):
+        self._loggedin = False
         logging.error('Envisalink timed out waiting for password, whoops that should never happen. Server is closing socket connection')
 
     def handle_keypad_update(self, data):

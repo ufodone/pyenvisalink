@@ -1,9 +1,6 @@
-from twisted.internet import reactor
-from twisted.python import log
-from threading import Thread
-from envisalink_client_factory import EnvisalinkClientFactory
-from alarm_state import AlarmState
 import logging
+from honeywell_client import HoneywellClient
+from alarm_state import AlarmState
 
 class EnvisalinkAlarmPanel:
         
@@ -16,7 +13,9 @@ class EnvisalinkAlarmPanel:
         self._password = password
         self._keepAliveInterval = keepAliveInterval
         self._alarmState = AlarmState.get_initial_alarm_state()
-                
+        self._client = None
+        
+        self._loginSuccessCallback = self._defaultCallback
         self._keypadUpdateCallback = self._defaultCallback
         
         loggingconfig = {'level': 'DEBUG',
@@ -24,11 +23,15 @@ class EnvisalinkAlarmPanel:
                      'datefmt': '%a, %d %b %Y %H:%M:%S'}
 
         logging.basicConfig(**loggingconfig)
-
-        # allow Twisted to hook into our logging
-        observer = log.PythonLoggingObserver()
-        observer.start()
     
+    @property
+    def host(self):
+        return self._host
+        
+    @ property
+    def port(self):
+        return self._port
+        
     @property
     def user_name(self):
         return self._username
@@ -53,16 +56,20 @@ class EnvisalinkAlarmPanel:
     def callback_keypad_update(self):
         return self._keypadUpdateCallback
         
+    @property
+    def callback_login_success(self):
+        return self._loginSuccessCallback
+        
     def _defaultCallback(self, data):
-        logging.info("Callback has not been set by client.")
+        logging.info("Callback has not been set by client.")	    
 
     def start(self):
         logging.info(str.format("Connecting to envisalink on host: {0}, port: {1}", self._host, self._port))
-        self._envisalinkClientFactory = EnvisalinkClientFactory(self)
-        self._envisalinkConnection = reactor.connectTCP(self._host, self._port, self._envisalinkClientFactory)
-        Thread(target=reactor.run, args=(False,)).start()
+        if self._panelType == 'HONEYWELL':
+            self._client = HoneywellClient(self)
+            
+        self._client.connect()
         
     def stop(self):
-        reactor.stop()
-        self._envisalinkConnection.disconnect()
-        
+        logging.info("Disconnecting from the envisalink...")
+        self._client.disconnect()

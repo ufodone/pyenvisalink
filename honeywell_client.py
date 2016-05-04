@@ -1,12 +1,9 @@
 from envisalink_base_client import EnvisalinkClient
-from datetime import datetime
 from envisalinkdefs import *
 import logging
 import json
 
 class HoneywellClient(EnvisalinkClient):
-    def __init__(self, panel):
-        super(HoneywellClient,self).__init__(panel)
         
     def keep_alive(self):
         """Send a keepalive command to reset it's watchdog timer."""
