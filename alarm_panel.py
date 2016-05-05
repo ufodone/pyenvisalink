@@ -4,19 +4,33 @@ from alarm_state import AlarmState
 
 class EnvisalinkAlarmPanel:
         
-    def __init__(self, host, port=4025, panelType='HONEYWELL', 
-                 userName='user', password='user', keepAliveInterval=30):
+    def __init__(self, host, port=4025, panelType='HONEYWELL',
+                 envisalinkVersion=3, userName='user', password='user',
+                 keepAliveInterval=30):
         self._host = host
         self._port = port
         self._panelType = panelType
+        self._evlVersion = envisalinkVersion
         self._username = userName
         self._password = password
         self._keepAliveInterval = keepAliveInterval
-        self._alarmState = AlarmState.get_initial_alarm_state()
+        self._maxPartitions = 8
+        if envisalinkVersion < 4:
+            self._maxZones = 64
+        else:
+            self._maxZones = 128
+        self._alarmState = AlarmState.get_initial_alarm_state(self._maxZones, self._maxPartitions)
         self._client = None
         
         self._loginSuccessCallback = self._defaultCallback
+        self._loginFailureCallback = self._defaultCallback
+        self._loginTimeoutCallback = self._defaultCallback
         self._keypadUpdateCallback = self._defaultCallback
+        self._zoneStateChangeCallback = self._defaultCallback
+        self._paritionStateChangeCallback = self._defaultCallback
+        self._cidEventCallback = self._defaultCallback
+        self._zoneTimerCallback = self._defaultCallback
+
         
         loggingconfig = {'level': 'DEBUG',
                      'format': '%(asctime)s %(levelname)s <%(name)s %(module)s %(funcName)s> %(message)s',
@@ -43,6 +57,10 @@ class EnvisalinkAlarmPanel:
     @property
     def panel_type(self):
         return self._panelType
+
+    @property
+    def envisalink_version(self):
+        return self._evlVersion
         
     @property
     def keepalive_interval(self):
@@ -53,12 +71,36 @@ class EnvisalinkAlarmPanel:
         return self._alarmState
         
     @property
-    def callback_keypad_update(self):
-        return self._keypadUpdateCallback
-        
-    @property
     def callback_login_success(self):
         return self._loginSuccessCallback
+
+    @property
+    def callback_login_failure(self):
+        return self._loginFailureCallback
+
+    @property
+    def callback_login_timeout(self):
+        return self._loginTimeoutCallback
+
+    @property
+    def callback_keypad_update(self):
+        return self._keypadUpdateCallback
+
+    @property
+    def callback_zone_state_change(self):
+        return self._zoneStateChangeCallback
+
+    @property
+    def callback_partition_state_change(self):
+        return self._paritionStateChangeCallback
+
+    @property
+    def callback_realtime_cid_event(self):
+        return self._cidEventCallback
+
+    @property
+    def callback_zone_timer_dump(self):
+        return self._zoneTimerCallback
         
     def _defaultCallback(self, data):
         logging.info("Callback has not been set by client.")	    
@@ -73,3 +115,15 @@ class EnvisalinkAlarmPanel:
     def stop(self):
         logging.info("Disconnecting from the envisalink...")
         self._client.disconnect()
+
+    def dump_zone_timers(self):
+        self._client.dump_zone_timers()
+
+    def change_partition(self, partitionNumber):
+        self._client.change_partition(partitionNumber)
+
+    def keypresses_to_default_partition(self, keypresses):
+        self._client.keypresses_to_default_partition(keypresses)
+
+    def keypresses_to_partition(self, partitionNumber, keypresses):
+        self._client.keypresses_to_partition(partitionNumber, keypresses)

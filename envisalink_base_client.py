@@ -15,6 +15,7 @@ class EnvisalinkClient(asyncio.Protocol):
         logging.info(str.format("Started to connect to Envisalink... at {0}:{1}", self._alarmPanel.host, self._alarmPanel.port))
         coro = self._eventLoop.create_connection(lambda: self, self._alarmPanel.host, self._alarmPanel.port)
         asyncio.ensure_future(coro)
+        asyncio.ensure_future(self.keep_alive())
         workerThread = threading.Thread(target=self.runEventLoop, args=())
         workerThread.start()
         
@@ -34,7 +35,8 @@ class EnvisalinkClient(asyncio.Protocol):
 
     def reconnect(self, delay):
         self._eventLoop.call_later(delay, self.connect)
-                             
+
+    @asyncio.coroutine                         
     def keep_alive(self):
         raise NotImplementedError()
             
@@ -47,6 +49,21 @@ class EnvisalinkClient(asyncio.Protocol):
         """Raw data send- just make sure it's encoded properly and logged."""
         logging.debug(str.format('TX > {0}', data.encode('ascii')))
         self._transport.write((data + '\n').encode('ascii'))
+
+    def send_command(self, code, data):
+        raise NotImplementedError()
+
+    def dump_zone_timers(self):
+        raise NotImplementedError()
+
+    def change_partition(self, partitionNumber):
+        raise NotImplementedError()
+
+    def keypresses_to_default_partition(self, keypresses):
+        self.send_data(keypresses)
+
+    def keypresses_to_partition(self, partitionNumber, keypresses):
+        raise NotImplementedError()
     
     def parseHandler(self, rawInput):
         """When the envisalink contacts us- parse out which command and data."""
@@ -55,6 +72,7 @@ class EnvisalinkClient(asyncio.Protocol):
     def data_received(self, data):
         if data != '':
             cmd = {}
+            result = ''
             logging.debug('----------------------------------------')
             logging.debug(str.format('RX < {0}', data.decode('ascii').strip()))
             cmd = self.parseHandler(data.decode('ascii').strip())
@@ -98,5 +116,17 @@ class EnvisalinkClient(asyncio.Protocol):
     def handle_poll_response(self, data):
         raise NotImplementedError()
         
-    def handle_command_response(self, code):
+    def handle_command_response(self, data):
+        raise NotImplementedError()
+
+    def handle_zone_state_change(self, data):
+        raise NotImplementedError()
+
+    def handle_partition_state_change(self, data):
+        raise NotImplementedError()
+
+    def handle_realtime_cid_event(self, data):
+        raise NotImplementedError()
+
+    def handle_zone_timer_dump(self, data):
         raise NotImplementedError()
