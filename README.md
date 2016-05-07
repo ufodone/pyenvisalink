@@ -1,8 +1,13 @@
+This project is an attempt at creating a pure, raw python library for interfacing with the envisalink line of alarm products.  In particular the envisalink EVL3 and EVL4.  This project leverages the asyncio library, providing full asynchronous communication with the envisalink board.  All that must be done is call the proper constructor with connectivity/credentials, and provide callbacks for any events you wish to be notified of. 
+
+Also, an attempt has been made at merging the two APIs that are available for the Envisalink alarm interfaces (DSC and Honeywell).  While the APIs are quite a bit different, a base functionality is common between them, and thus an abstraction can be made.
+
+
 This project uses the [Ademco TPI provided by Eyez-On](http://forum.eyez-on.com/FORUM/viewtopic.php?f=6&t=301).  It processes events and passes commands to the Envisalink server and provides an easy to use HTTP interface for clients.
 
 This project was originally a fork of the [AlarmServer project for DSC panels](https://github.com/juggie/AlarmServer) - credit to them for the base code.   However, the API's between DSC and Honeywell are so different that it didn't make sense to try to maintain a single codebase.
 
-This is still beta software.  So far it has only been tested with an Envisalink 3 and Honeywell Vista 15p panel.
+This is still beta software.  So far it has only been tested with an Envisalink 3 and Honeywell Vista 20p panel.
 
 #### What Works ####
 

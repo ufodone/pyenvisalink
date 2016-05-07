@@ -110,11 +110,11 @@ class EnvisalinkAlarmPanel:
         if self._panelType == 'HONEYWELL':
             self._client = HoneywellClient(self)
             
-        self._client.connect()
+        self._client.start()
         
     def stop(self):
         logging.info("Disconnecting from the envisalink...")
-        self._client.disconnect()
+        self._client.stop()
 
     def dump_zone_timers(self):
         self._client.dump_zone_timers()

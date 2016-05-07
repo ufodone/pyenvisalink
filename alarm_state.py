@@ -11,6 +11,6 @@ class AlarmState:
                                                       'trouble': False, 'ready': False, 'fire': False,
                                                       'armed_stay': False, 'alpha': False, 'beep': False}}
         for j in range (1, maxZones + 1):
-            _alarmState['zone'][j] = {'status': {'open': False, 'fault': False, 'alarm': False, 'tamper': False}}
+            _alarmState['zone'][j] = {'status': {'open': False, 'fault': False, 'alarm': False, 'tamper': False}, 'last_fault': 0}
 
         return _alarmState
