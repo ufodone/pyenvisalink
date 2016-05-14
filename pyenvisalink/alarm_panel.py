@@ -6,7 +6,7 @@ class EnvisalinkAlarmPanel:
         
     def __init__(self, host, port=4025, panelType='HONEYWELL',
                  envisalinkVersion=3, userName='user', password='user',
-                 keepAliveInterval=30):
+                 zoneTimerInterval=20, keepAliveInterval=30):
         self._host = host
         self._port = port
         self._panelType = panelType
@@ -14,6 +14,7 @@ class EnvisalinkAlarmPanel:
         self._username = userName
         self._password = password
         self._keepAliveInterval = keepAliveInterval
+        self._zoneTimerInterval = zoneTimerInterval
         self._maxPartitions = 8
         if envisalinkVersion < 4:
             self._maxZones = 64
@@ -25,6 +26,8 @@ class EnvisalinkAlarmPanel:
         self._loginSuccessCallback = self._defaultCallback
         self._loginFailureCallback = self._defaultCallback
         self._loginTimeoutCallback = self._defaultCallback
+        self._commandResponseCallback = self._defaultCallback
+        self._pollResponseCallback = self._defaultCallback
         self._keypadUpdateCallback = self._defaultCallback
         self._zoneStateChangeCallback = self._defaultCallback
         self._paritionStateChangeCallback = self._defaultCallback
@@ -65,7 +68,11 @@ class EnvisalinkAlarmPanel:
     @property
     def keepalive_interval(self):
         return self._keepAliveInterval
-    
+
+    @property
+    def zone_timer_interval(self):
+        return self._zoneTimerInterval
+
     @property
     def alarm_state(self):
         return self._alarmState
@@ -83,12 +90,24 @@ class EnvisalinkAlarmPanel:
         return self._loginTimeoutCallback
 
     @property
+    def callback_poll_response(self):
+        return self._pollResponseCallback
+
+    @property
+    def callback_command_response(self):
+        return self._commandResponseCallback
+
+    @property
     def callback_keypad_update(self):
         return self._keypadUpdateCallback
 
     @property
     def callback_zone_state_change(self):
         return self._zoneStateChangeCallback
+
+    @callback_zone_state_change.setter
+    def callback_zone_state_change(self, value):
+        self._zoneStateChangeCallback = value
 
     @property
     def callback_partition_state_change(self):
@@ -101,6 +120,10 @@ class EnvisalinkAlarmPanel:
     @property
     def callback_zone_timer_dump(self):
         return self._zoneTimerCallback
+ 
+    @callback_zone_timer_dump.setter
+    def callback_zone_timer_dump(self, value):
+        self._zoneTimerCallback = value
         
     def _defaultCallback(self, data):
         logging.info("Callback has not been set by client.")	    

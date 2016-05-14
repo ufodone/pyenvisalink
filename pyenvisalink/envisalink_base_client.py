@@ -24,6 +24,9 @@ class EnvisalinkClient(asyncio.Protocol):
         self._shutdown = False
         self.connect()
         asyncio.ensure_future(self.keep_alive())
+        if self._alarmPanel.zone_timer_interval > 0:
+            asyncio.ensure_future(self.periodic_zone_timer_dump())
+
         workerThread = threading.Thread(target=self.runEventLoop, args=())
         workerThread.start()
     
@@ -59,6 +62,11 @@ class EnvisalinkClient(asyncio.Protocol):
     @asyncio.coroutine                         
     def keep_alive(self):
         """Used to periodically send a keepalive message to the envisalink."""
+        raise NotImplementedError()
+
+    @asyncio.coroutine
+    def periodic_zone_timer_dump(self):
+        """Used to periodically get the zone timers to make sure our zones are updated."""
         raise NotImplementedError()
             
     def disconnect(self):
@@ -98,28 +106,32 @@ class EnvisalinkClient(asyncio.Protocol):
     def data_received(self, data):
         """asyncio callback for any data recieved from the envisalink."""
         if data != '':
+            fullData = data.decode('ascii').strip()
             cmd = {}
             result = ''
             logging.debug('----------------------------------------')
-            logging.debug(str.format('RX < {0}', data.decode('ascii').strip()))
-            cmd = self.parseHandler(data.decode('ascii').strip())
-            try:
-                logging.debug(str.format('calling handler: {0}', cmd['handler']))
-                handlerFunc = getattr(self, cmd['handler'])
-                result = handlerFunc(cmd['data'])
-    
-            except AttributeError:
-                logging.warning(str.format("No handler exists for command: {0}. Skipping.", cmd['handler']))                
+            logging.debug(str.format('RX < {0}', fullData))
+            lines = str.split(fullData, '\n')
+            for line in lines:
+                cmd = self.parseHandler(line)
             
-            try:
-                logging.debug(str.format('Invoking callback: {0}', cmd['callback']))
-                callbackFunc = getattr(self._alarmPanel, cmd['callback'])
-                callbackFunc(result)
+                try:
+                    logging.debug(str.format('calling handler: {0}', cmd['handler']))
+                    handlerFunc = getattr(self, cmd['handler'])
+                    result = handlerFunc(cmd['data'])
     
-            except AttributeError:
-                logging.warning(str.format("No callback exists for command: {0}. Skipping.", cmd['callback']))                
+                except AttributeError:
+                    logging.warning(str.format("No handler exists for command: {0}. Skipping.", cmd['handler']))                
+            
+                try:
+                    logging.debug(str.format('Invoking callback: {0}', cmd['callback']))
+                    callbackFunc = getattr(self._alarmPanel, cmd['callback'])
+                    callbackFunc(result)
+    
+                except AttributeError:
+                    logging.warning(str.format("No callback exists for command: {0}. Skipping.", cmd['callback']))                
 
-            logging.debug('----------------------------------------')
+                logging.debug('----------------------------------------')
             
     def handle_login(self, data):
         """Handler for when the envisalink challenges for password."""

@@ -14,7 +14,15 @@ class HoneywellClient(EnvisalinkClient):
             if self._loggedin:
                 self.send_command(evl_Commands['KeepAlive'], '')
             yield from asyncio.sleep(self._alarmPanel.keepalive_interval)
-            
+
+    @asyncio.coroutine
+    def periodic_zone_timer_dump(self):
+        """Used to periodically get the zone timers to make sure our zones are updated."""
+        while True:
+            if self._loggedin:
+                self.dump_zone_timers()
+            yield from asyncio.sleep(self._alarmPanel.zone_timer_interval)
+
     def send_command(self, code, data):
         """Send a command in the proper honeywell format."""
         to_send = '^' + code + ',' + data + '$'
