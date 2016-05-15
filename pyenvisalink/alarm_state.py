@@ -1,6 +1,9 @@
 class AlarmState:
+    """Helper class for alarm state functionality."""
+
     @staticmethod
     def get_initial_alarm_state(maxZones, maxPartitions):
+        """Builds the proper alarm state collection."""
 
         _alarmState = {'partition': {}, 'zone': {}}
 

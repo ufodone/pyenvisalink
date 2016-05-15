@@ -3,14 +3,17 @@ import json
 import re
 import asyncio
 from pyenvisalink import EnvisalinkClient
-from pyenvisalink.envisalinkdefs import *
+from pyenvisalink.honeywell_envisalinkdefs import *
+
+_LOGGER = logging.getLogger(__name__)
 
 class HoneywellClient(EnvisalinkClient):
+    """Represents a honeywell alarm client."""
 
     @asyncio.coroutine        
     def keep_alive(self):
         """Send a keepalive command to reset it's watchdog timer."""
-        while True:
+        while not self._shutdown:
             if self._loggedin:
                 self.send_command(evl_Commands['KeepAlive'], '')
             yield from asyncio.sleep(self._alarmPanel.keepalive_interval)
@@ -18,7 +21,7 @@ class HoneywellClient(EnvisalinkClient):
     @asyncio.coroutine
     def periodic_zone_timer_dump(self):
         """Used to periodically get the zone timers to make sure our zones are updated."""
-        while True:
+        while not self._shutdown:
             if self._loggedin:
                 self.dump_zone_timers()
             yield from asyncio.sleep(self._alarmPanel.zone_timer_interval)
@@ -52,13 +55,14 @@ class HoneywellClient(EnvisalinkClient):
             code = rawInput
             cmd['data'] = ''
         else:
-            logging.error("Unrecognized data recieved from the envisalink. Ignoring.")    
-        logging.debug(str.format("Code:{0} Data:{1}", code, cmd['data']))
+            _LOGGER.error("Unrecognized data recieved from the envisalink. Ignoring.")    
+
+        _LOGGER.debug(str.format("Code:{0} Data:{1}", code, cmd['data']))
         try:
             cmd['handler'] = "handle_%s" % evl_ResponseTypes[code]['handler']
             cmd['callback'] = "callback_%s" % evl_ResponseTypes[code]['handler']
         except KeyError:
-            logging.warning(str.format('No handler defined in config for {0}, skipping...', code))
+            _LOGGER.warning(str.format('No handler defined in config for {0}, skipping...', code))
                 
         return cmd
 
@@ -103,7 +107,7 @@ class HoneywellClient(EnvisalinkClient):
     def handle_command_response(self, data):
         """Handle the envisalink's initial response to our commands."""
         responseString = evl_TPI_Response_Codes[data]
-        logging.debug("Envisalink response: " + responseString)
+        _LOGGER.debug("Envisalink response: " + responseString)
         if data != '00':
             logging.error("error sending command to envisalink.  Response was: " + responseString)
 			
@@ -117,7 +121,7 @@ class HoneywellClient(EnvisalinkClient):
         # make sure data is in format we expect, current TPI seems to send bad data every so ofen
         #TODO: Make this a regex...
         if len(dataList) != 5 or "%" in data:
-            logging.error("Data format invalid from Envisalink, ignoring...")
+            _LOGGER.error("Data format invalid from Envisalink, ignoring...")
             return
 
         partitionNumber = int(dataList[0])
@@ -125,7 +129,7 @@ class HoneywellClient(EnvisalinkClient):
         flags.asShort = int(dataList[1], 16)
         beep = evl_Virtual_Keypad_How_To_Beep.get(dataList[3], 'unknown')
         alpha = dataList[4]
-        logging.debug("Updating our local alarm state...")
+        _LOGGER.debug("Updating our local alarm state...")
         self._alarmPanel.alarm_state['partition'][partitionNumber]['status'].update({'alarm': bool(flags.alarm), 'alarm_in_memory': bool(flags.alarm_in_memory), 'armed_away': bool(flags.armed_away),
                                                                    'ac_present': bool(flags.ac_present), 'armed_bypass': bool(flags.bypass), 'chime': bool(flags.chime),
                                                                    'armed_zero_entry_delay': bool(flags.armed_zero_entry_delay), 'alarm_fire_zone': bool(flags.alarm_fire_zone),
@@ -134,7 +138,7 @@ class HoneywellClient(EnvisalinkClient):
                                                                    'alpha': alpha,
                                                                    'beep': beep,
                                                                    })
-        logging.debug(json.dumps(self._alarmPanel.alarm_state['partition'][partitionNumber]['status']))
+        _LOGGER.debug(json.dumps(self._alarmPanel.alarm_state['partition'][partitionNumber]['status']))
 
     def handle_zone_state_change(self, data):
         """Handle when the envisalink sends us a zone change."""
@@ -162,6 +166,7 @@ class HoneywellClient(EnvisalinkClient):
         # reverse every 16 bits so "lowest" zone is on the left
         zonefieldString = ''
         inputItems = re.findall('.' * 16, bitfieldString)
+
         for inputItem in inputItems:
             zonefieldString += inputItem[::-1]
 
@@ -169,7 +174,8 @@ class HoneywellClient(EnvisalinkClient):
                 self._alarmPanel.alarm_state['zone'][zoneNumber]['status'].update({'open': zoneBit == '1', 'fault': zoneBit == '1'})
                 if zoneBit == '1':
                     self._alarmPanel.alarm_state['zone'][zoneNumber]['last_fault'] = 0
-                logging.debug("(zone %i) is %s", zoneNumber, "Open/Faulted" if zoneBit == '1' else "Closed/Not Faulted")
+
+                _LOGGER.debug("(zone %i) is %s", zoneNumber, "Open/Faulted" if zoneBit == '1' else "Closed/Not Faulted")
 
     def handle_partition_state_change(self, data):
         """Handle when the envisalink sends us a partition change."""
@@ -186,8 +192,8 @@ class HoneywellClient(EnvisalinkClient):
                                                                            'ready': bool(partitionState['name'] == 'READY' or partitionState['name'] == 'READY_BYPASS')})
 
             if partitionState['name'] == 'NOT_READY': self._alarmPanel.alarm_state['partition'][partitionNumber]['status'].update({'ready': False})
-            logging.debug('Parition ' + str(partitionNumber) + ' is in state ' + partitionState['name'])
-            logging.debug(json.dumps(self._alarmPanel.alarm_state['partition'][partitionNumber]['status']))
+            _LOGGER.debug('Parition ' + str(partitionNumber) + ' is in state ' + partitionState['name'])
+            _LOGGER.debug(json.dumps(self._alarmPanel.alarm_state['partition'][partitionNumber]['status']))
 
     def handle_realtime_cid_event(self, data):
         """Handle when the envisalink sends us an alarm arm/disarm/trigger."""
@@ -198,11 +204,11 @@ class HoneywellClient(EnvisalinkClient):
         partition = data[4:6]
         zoneOrUser = int(data[6:9])
 
-        logging.debug('Event Type is ' + eventType)
-        logging.debug('CID Type is ' + cidEvent['type'])
-        logging.debug('CID Description is ' + cidEvent['label'])
-        logging.debug('Partition is ' + partition)
-        logging.debug(cidEvent['type'] + ' value is ' + str(zoneOrUser))
+        _LOGGER.debug('Event Type is ' + eventType)
+        _LOGGER.debug('CID Type is ' + cidEvent['type'])
+        _LOGGER.debug('CID Description is ' + cidEvent['label'])
+        _LOGGER.debug('Partition is ' + partition)
+        _LOGGER.debug(cidEvent['type'] + ' value is ' + str(zoneOrUser))
         
         return cidEvent
 
@@ -212,4 +218,4 @@ class HoneywellClient(EnvisalinkClient):
         for zoneNumber, zoneInfo in enumerate(zoneInfoArray, start=1):
             self._alarmPanel.alarm_state['zone'][zoneNumber]['status'].update({'open': zoneInfo['status'] == 'open', 'fault': zoneInfo['status'] == 'open'})
             self._alarmPanel.alarm_state['zone'][zoneNumber]['last_fault'] = zoneInfo['seconds']
-            logging.debug("(zone %i) %s", zoneNumber, zoneInfo['status'])
+            _LOGGER.debug("(zone %i) %s", zoneNumber, zoneInfo['status'])

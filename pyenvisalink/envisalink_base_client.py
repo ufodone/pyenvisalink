@@ -3,9 +3,12 @@ import threading
 import logging
 from pyenvisalink import AlarmState
 
+_LOGGER = logging.getLogger(__name__)
+
 class EnvisalinkClient(asyncio.Protocol):
+    """Abstract base class for the envisalink TPI client."""
+
     def __init__(self, panel):
-        # Are we logged in?
         self._loggedin = False
         self._alarmPanel = panel
         self._eventLoop = asyncio.get_event_loop()
@@ -17,13 +20,15 @@ class EnvisalinkClient(asyncio.Protocol):
         asyncio.set_event_loop(self._eventLoop)
         self._eventLoop.run_forever()
         self._eventLoop.close()
-        logging.debug("Connection shut down.")
+
+        _LOGGER.info("Connection shut down.")
 
     def start(self):
         """Public method for initiating connectivity with the envisalink."""
         self._shutdown = False
         self.connect()
         asyncio.ensure_future(self.keep_alive())
+
         if self._alarmPanel.zone_timer_interval > 0:
             asyncio.ensure_future(self.periodic_zone_timer_dump())
 
@@ -32,27 +37,27 @@ class EnvisalinkClient(asyncio.Protocol):
     
     def stop(self):
         """Public method for shutting down connectivity with the envisalink."""
-        logging.debug("Shutting down Envisalink client connection...")
+        _LOGGER.info("Shutting down Envisalink client connection...")
         self._loggedin = False
         self._shutdown = True
         self._eventLoop.call_soon_threadsafe(self._eventLoop.stop)
 
     def connect(self):
         """Internal method for making the physical connection."""
-        logging.info(str.format("Started to connect to Envisalink... at {0}:{1}", self._alarmPanel.host, self._alarmPanel.port))
+        _LOGGER.info(str.format("Started to connect to Envisalink... at {0}:{1}", self._alarmPanel.host, self._alarmPanel.port))
         coro = self._eventLoop.create_connection(lambda: self, self._alarmPanel.host, self._alarmPanel.port)
         asyncio.ensure_future(coro)
         
     def connection_made(self, transport):
         """asyncio callback for a successful connection."""
-        logging.info("Connection Successful!")
+        _LOGGER.info("Connection Successful!")
         self._transport = transport
         
     def connection_lost(self, exc):
         """asyncio callback for connection lost."""
         self._loggedin = False
         if not self._shutdown:
-            logging.error('The server closed the connection. Reconnecting...')
+            _LOGGER.error('The server closed the connection. Reconnecting...')
             self.reconnect(5)
 
     def reconnect(self, delay):
@@ -71,12 +76,12 @@ class EnvisalinkClient(asyncio.Protocol):
             
     def disconnect(self):
         """Internal method for forcing connection closure if hung."""
-        logging.debug('Closing connection with server for a reconnect...')
+        _LOGGER.debug('Closing connection with server for a reconnect...')
         self._transport.close()
             
     def send_data(self, data):
         """Raw data send- just make sure it's encoded properly and logged."""
-        logging.debug(str.format('TX > {0}', data.encode('ascii')))
+        _LOGGER.debug(str.format('TX > {0}', data.encode('ascii')))
         self._transport.write((data + '\n').encode('ascii'))
 
     def send_command(self, code, data):
@@ -109,29 +114,29 @@ class EnvisalinkClient(asyncio.Protocol):
             fullData = data.decode('ascii').strip()
             cmd = {}
             result = ''
-            logging.debug('----------------------------------------')
-            logging.debug(str.format('RX < {0}', fullData))
+            _LOGGER.debug('----------------------------------------')
+            _LOGGER.debug(str.format('RX < {0}', fullData))
             lines = str.split(fullData, '\n')
             for line in lines:
                 cmd = self.parseHandler(line)
             
                 try:
-                    logging.debug(str.format('calling handler: {0}', cmd['handler']))
+                    _LOGGER.debug(str.format('calling handler: {0}', cmd['handler']))
                     handlerFunc = getattr(self, cmd['handler'])
                     result = handlerFunc(cmd['data'])
     
                 except AttributeError:
-                    logging.warning(str.format("No handler exists for command: {0}. Skipping.", cmd['handler']))                
+                    _LOGGER.warning(str.format("No handler exists for command: {0}. Skipping.", cmd['handler']))                
             
                 try:
-                    logging.debug(str.format('Invoking callback: {0}', cmd['callback']))
+                    _LOGGER.debug(str.format('Invoking callback: {0}', cmd['callback']))
                     callbackFunc = getattr(self._alarmPanel, cmd['callback'])
                     callbackFunc(result)
     
                 except AttributeError:
-                    logging.warning(str.format("No callback exists for command: {0}. Skipping.", cmd['callback']))                
+                    _LOGGER.warning(str.format("No callback exists for command: {0}. Skipping.", cmd['callback']))                
 
-                logging.debug('----------------------------------------')
+                _LOGGER.debug('----------------------------------------')
             
     def handle_login(self, data):
         """Handler for when the envisalink challenges for password."""
@@ -140,18 +145,18 @@ class EnvisalinkClient(asyncio.Protocol):
     def handle_login_success(self, data):
         """Handler for when the envisalink accepts our credentials."""
         self._loggedin = True
-        logging.debug('Password accepted, session created')
+        _LOGGER.debug('Password accepted, session created')
 
     def handle_login_failure(self, data):
         """Handler for when the envisalink rejects our credentials."""
         self._loggedin = False
-        logging.error('Password is incorrect. Server is closing socket connection.')
+        _LOGGER.error('Password is incorrect. Server is closing socket connection.')
         self.disconnect()
 
     def handle_login_timeout(self, data):
         """Handler for if we fail to send a password in time."""
         self._loggedin = False
-        logging.error('Envisalink timed out waiting for password, whoops that should never happen. Server is closing socket connection')
+        _LOGGER.error('Envisalink timed out waiting for password, whoops that should never happen. Server is closing socket connection')
         self.disconnect()
 
     def handle_keypad_update(self, data):
