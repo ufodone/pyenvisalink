@@ -10,4 +10,5 @@ setup(name='pyenvisalink',
       author_email='dcinnamon@gmail.com',
       license='MIT',
       packages=['pyenvisalink'],
-      zip_safe=False)
+      classifiers=['Development Status :: 4 - Beta', 'Programming Language :: Python :: 3.4','Programming Language :: Python :: 3.5']
+      )
