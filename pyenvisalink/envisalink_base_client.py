@@ -103,6 +103,22 @@ class EnvisalinkClient(asyncio.Protocol):
     def keypresses_to_partition(self, partitionNumber, keypresses):
         """Public method to send a key to the default partition."""
         raise NotImplementedError()
+
+    def arm_stay_partition(self, code, partitionNumber):
+        """Public method to arm/stay a partition."""
+        raise NotImplementedError()
+
+    def arm_away_partition(self, code, partitionNumber):
+        """Public method to arm/away a partition."""
+        raise NotImplementedError()
+
+    def arm_max_partition(self, code, partitionNumber):
+        """Public method to arm/max a partition."""
+        raise NotImplementedError()
+
+    def disarm_partition(self, code, partitionNumber):
+        """Public method to disarm a partition."""
+        raise NotImplementedError()
     
     def parseHandler(self, rawInput):
         """When the envisalink contacts us- parse out which command and data."""
@@ -151,7 +167,7 @@ class EnvisalinkClient(asyncio.Protocol):
         """Handler for when the envisalink rejects our credentials."""
         self._loggedin = False
         _LOGGER.error('Password is incorrect. Server is closing socket connection.')
-        self.disconnect()
+        self.stop()
 
     def handle_login_timeout(self, data):
         """Handler for if we fail to send a password in time."""

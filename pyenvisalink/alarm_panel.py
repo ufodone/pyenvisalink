@@ -213,3 +213,31 @@ class EnvisalinkAlarmPanel:
             self._client.keypresses_to_partition(partitionNumber, keypresses)
         else:
             _LOGGER.error(COMMAND_ERR)
+
+    def arm_stay_partition(self, code, partitionNumber):
+        """Public method to arm/stay a partition."""
+        if self._client:
+            self._client.arm_stay_partition(code, partitionNumber)
+        else:
+            _LOGGER.error(COMMAND_ERR)
+
+    def arm_away_partition(self, code, partitionNumber):
+        """Public method to arm/away a partition."""
+        if self._client:
+            self._client.arm_away_partition(code, partitionNumber)
+        else:
+            _LOGGER.error(COMMAND_ERR)
+
+    def arm_max_partition(self, code, partitionNumber):
+        """Public method to arm/max a partition."""
+        if self._client:
+            self._client.arm_max_partition(code, partitionNumber)
+        else:
+            _LOGGER.error(COMMAND_ERR)
+
+    def disarm_partition(self, code, partitionNumber):
+        """Public method to disarm a partition."""
+        if self._client:
+            self._client.disarm_partition(code, partitionNumber)
+        else:
+            _LOGGER.error(COMMAND_ERR)

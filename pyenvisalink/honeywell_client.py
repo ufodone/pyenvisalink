@@ -39,7 +39,23 @@ class HoneywellClient(EnvisalinkClient):
         """Send keypresses to a particular partition."""
         for char in keypresses:
             self.send_command(evl_Commands['PartitionKeypress'], str.format("{0},{1}", partitionNumber, char))
-        
+
+    def arm_stay_partition(self, code, partitionNumber):
+        """Public method to arm/stay a partition."""
+        self.keypresses_to_partition(partitionNumber, code + '3')
+
+    def arm_away_partition(self, code, partitionNumber):
+        """Public method to arm/away a partition."""
+        self.keypresses_to_partition(partitionNumber, code + '2')
+
+    def arm_max_partition(self, code, partitionNumber):
+        """Public method to arm/max a partition."""
+        self.keypresses_to_partition(partitionNumber, code + '4')
+
+    def disarm_partition(self, code, partitionNumber):
+        """Public method to disarm a partition."""
+        self.keypresses_to_partition(partitionNumber, code + '1')
+
     def parseHandler(self, rawInput):
         """When the envisalink contacts us- parse out which command and data."""
         cmd = {}
