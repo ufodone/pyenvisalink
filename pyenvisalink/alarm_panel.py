@@ -175,8 +175,11 @@ class EnvisalinkAlarmPanel:
         if self._panelType == 'HONEYWELL':
             self._client = HoneywellClient(self)
             self._client.start()
+        elif self._panelType == 'DSC':
+            self._client = DSCClient(self)
+            self._client.start()
         else:
-            _LOGGER.error("Sorry, this library only supports honeywell panels at this time.  DSC support will be coming!")    
+            _LOGGER.error("Unexpected panel type.")    
         
     def stop(self):
         """Shut down and close our connection to the envisalink."""
