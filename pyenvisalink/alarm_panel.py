@@ -1,5 +1,6 @@
 import logging
 from pyenvisalink import HoneywellClient
+from pyenvisalink import DSCClient
 from pyenvisalink import AlarmState
 
 _LOGGER = logging.getLogger(__name__)

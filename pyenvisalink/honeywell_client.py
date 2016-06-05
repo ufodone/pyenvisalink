@@ -82,40 +82,6 @@ class HoneywellClient(EnvisalinkClient):
                 
         return cmd
 
-    def convertZoneDump(self, theString):
-        """Interpret the zone dump result, and convert to readable times."""
-        returnItems = []
-        zoneNumber = 1
-        # every four characters
-        inputItems = re.findall('....', theString)
-        for inputItem in inputItems:
-            # Swap the couples of every four bytes (little endian to big endian)
-            swapedBytes = []
-            swapedBytes.insert(0, inputItem[0:2])
-            swapedBytes.insert(0, inputItem[2:4])
-
-            # add swapped set of four bytes to our return items, converting from hex to int
-            itemHexString = ''.join(swapedBytes)
-            itemInt = int(itemHexString, 16)
-
-            # each value is a timer for a zone that ticks down every five seconds from maxint
-            MAXINT = 65536
-            itemTicks = MAXINT - itemInt
-            itemSeconds = itemTicks * 5
-
-            status = ''
-            #The envisalink never seems to report back exactly 0 seconds for an open zone.
-            #it always seems to be 10-15 seconds.  So anything below 30 seconds will be open.
-            #this will of course be augmented with zone/partition events.
-            if itemSeconds < 30:
-                status = 'open'
-            else:
-                status = 'closed'
-
-            returnItems.append({'zone': zoneNumber, 'status': status, 'seconds': itemSeconds})
-            zoneNumber += 1
-        return returnItems
-
     def handle_login(self, data):
         """When the envisalink asks us for our password- send it."""
         self.send_data(self._alarmPanel.password) 
@@ -227,11 +193,3 @@ class HoneywellClient(EnvisalinkClient):
         _LOGGER.debug(cidEvent['type'] + ' value is ' + str(zoneOrUser))
         
         return cidEvent
-
-    def handle_zone_timer_dump(self, data):
-        """Handle the zone timer data."""
-        zoneInfoArray = self.convertZoneDump(data)
-        for zoneNumber, zoneInfo in enumerate(zoneInfoArray, start=1):
-            self._alarmPanel.alarm_state['zone'][zoneNumber]['status'].update({'open': zoneInfo['status'] == 'open', 'fault': zoneInfo['status'] == 'open'})
-            self._alarmPanel.alarm_state['zone'][zoneNumber]['last_fault'] = zoneInfo['seconds']
-            _LOGGER.debug("(zone %i) %s", zoneNumber, zoneInfo['status'])
