@@ -10,9 +10,15 @@ _LOGGER = logging.getLogger(__name__)
 class DSCClient(EnvisalinkClient):
     """Represents a dsc alarm client."""
 
+    def to_chars(string):
+        chars = []
+        for char in string:
+            chars.append(ord(char))
+        return chars
+
     def get_checksum(self, code, data):
         """part of each command includes a checksum.  Calculate."""
-        return ("%02X" % sum(to_chars(code)+to_chars(data)))[-2:]
+        return ("%02X" % sum(self.to_chars(code)+self.to_chars(data)))[-2:]
 
     def send_command(self, code, data):
         """Send a command in the proper honeywell format."""
@@ -59,7 +65,8 @@ class DSCClient(EnvisalinkClient):
         """When the envisalink contacts us- parse out which command and data."""
         cmd = {}
         if rawInput != '':
-            code = int(rawInput[:3])
+            code = rawInput[:3]
+            cmd['code'] = code
             cmd['data'] = rawInput[3:][:-2]
             
             try:
@@ -85,18 +92,54 @@ class DSCClient(EnvisalinkClient):
                 
         return cmd
 
-    def handle_login(self, data):
+    def handle_login(self, code, data):
         """When the envisalink asks us for our password- send it."""
         self.send_command(evl_Commands['Login'], self._alarmPanel.password) 
         
-    def handle_command_response(self, data):
+    def handle_command_response(self, code, data):
         """Handle the envisalink's initial response to our commands."""
         _LOGGER.debug("DSC ack recieved.")
 
-    def handle_command_response_error(self,data):
+    def handle_command_response_error(self, code, data):
         """Handle the case where the DSC passes back a checksum failure."""
         _LOGGER.error("The previous command resulted in a checksum failure.")
 			
-    def handle_poll_response(self, data):
+    def handle_poll_response(self, code, data):
         """Handle the response to our keepalive messages."""
-        self.handle_command_response(data)
+        self.handle_command_response(code, data)
+
+    def handle_zone_state_change(self, code, data):
+        """Handle when the envisalink sends us a zone change."""
+        """Event 601-610."""
+        parse = re.match('^[0-9]{4}$', data)
+        if parse:
+            partitionNumber = data[0]
+            zoneNumber = int(data[1:3])
+            self._alarmPanel.alarm_state['zone'][zoneNumber]['status'].update(evl_ResponseTypes[code]['status'])
+            _LOGGER.debug(str.format("(zone {0}) state has updated: {1}", zoneNumber, json.dumps(evl_ResponseTypes[code]['status'])))
+            return zoneNumber
+        else:
+            _LOGGER.error("Invalid data has been passed in the zone update.")
+
+    def handle_partition_state_change(self, code, data):
+        """Handle when the envisalink sends us a partition change."""
+        """Event 650-674, 652 is an exception, because 2 bytes are passed for partition and zone type."""
+        if code == '652':
+            parse = re.match('^[0-9]{2}$', data)
+            if parse:
+                partitionNumber = data[0]
+                armType = evl_ArmModes[data[1]]['name']
+                self._alarmPanel.alarm_state['partition'][partitionNumber]['status']['alpha'] = armType
+                _LOGGER.debug(str.format("(partition {0}) state has updated: {1}", partitionNumber, armType))
+                return partitionNumber
+            else:
+                _LOGGER.error("Invalid data has been passed when arming the alarm.") 
+        else:
+            parse = re.match('^[0-9]$', data)
+            if parse:
+                partitionNumber = data[0]
+                self._alarmPanel.alarm_state['partition'][partitionNumber]['status'].update(evl_ResponseTypes[code]['status'])
+                _LOGGER.debug(str.format("(partition {0}) state has updated: {1}", partitionNumber, json.dumps(evl_ResponseTypes[code]['status'])))
+                return partitionNumber
+            else:
+                _LOGGER.error("Invalid data has been passed in the parition update.")

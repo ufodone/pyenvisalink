@@ -14,9 +14,37 @@ evl_Commands = {
     'Login' : '005'
 }
 
+evl_ArmModes = {
+        '0' : {'name' : 'Arm Away'},
+        '1' : {'name' : 'Arm Stay'},
+        '2' : {'name' : 'Arm Zero Entry Away'},
+        '3' : {'name' : 'Arm Zero Entry Stay'}
+    }
+
 evl_ResponseTypes = {
-    '505' :  {'name' : 'Login Prompt', 'description' : 'Sent During Session Login Only.', 'handler' : 'login'},
-    '615' : {'name' : 'Envisalink Zone Timer Dump', 'description' : 'This command contains the raw zone timers used inside the Envisalink. The dump is a 256 character packed HEX string representing 64 UINT16 (little endian) zone timers. Zone timers count down from 0xFFFF (zone is open) to 0x0000 (zone is closed too long ago to remember). Each ''tick'' of the zone time is actually 5 seconds so a zone timer of 0xFFFE means ''5 seconds ago''. Remember, the zone timers are LITTLE ENDIAN so the above example would be transmitted as FEFF.', 'handler' : 'zone_timer_dump'},
-    '500' : {'type' : 'envisalink', 'name': 'Poll', 'description' : 'Envisalink poll', 'handler' : 'poll_response'},
-    '501' : {'type' : 'envisalink', 'name': 'Checksum', 'description' : 'Checksum failure', 'handler' : 'command_response_error'},
+    '505' : {'name':'Login Prompt', 'handler':'login'},
+    '615' : {'name':'Envisalink Zone Timer Dump', 'handler':'zone_timer_dump'},
+    '500' : {'name':'Poll', 'handler':'poll_response'},
+    '501' : {'name':'Checksum', 'handler':'command_response_error'},
+
+#ZONE UPDATES
+
+    '601' : {'name':'Zone Alarm', 'handler':'zone_state_change', 'status':{'alarm' : True}},
+    '602' : {'name':'Zone Alarm Restore', 'handler':'zone_state_change', 'status':{'alarm' : False}},
+    '603' : {'name':'Zone Tamper', 'handler':'zone_state_change', 'status':{'tamper' : True}},
+    '604' : {'name':'Zone Tamper Restore', 'handler':'zone_state_change', 'status':{'tamper' : False}},
+    '605' : {'name':'Zone Fault', 'handler':'zone_state_change', 'status':{'fault' : True}},
+    '606' : {'name':'Zone Fault Restore', 'handler':'zone_state_change', 'status':{'fault' : False}},
+    '609' : {'name':'Zone Open', 'handler':'zone_state_change', 'status':{'open' : True}},
+    '610' : {'name':'Zone Restored', 'handler':'zone_state_change', 'status':{'open' : False}},
+
+#PARTITION UPDATES
+    '650' : {'name':'Ready', 'handler':'partition_state_change', 'status':{'ready' : True, 'alpha' : 'Ready'}},
+    '651' : {'name':'Not Ready', 'handler':'partition_state_change', 'status':{'ready' : False, 'alpha' : 'Not Ready'}},
+    '652' : {'name':'Armed', 'handler':'partition_state_change', 'status':{'armed' : True, 'exit_delay' : False, 'alpha' : 'Armed {0}'}},
+    '653' : {'name':'Ready - Force Arming Enabled', 'handler':'partition_state_change', 'status':{'ready': True, 'alpha' : 'Ready - Force Arm'}},
+    '654' : {'name':'Alarm', 'handler':'partition_state_change', 'status':{'alarm' : True, 'alpha' : 'Alarm'}},
+    '655' : {'name':'Disarmed', 'handler':'partition_state_change', 'status' : {'alarm' : False, 'armed' : False, 'exit_delay' : False, 'entry_delay' : False, 'alpha' : 'Disarmed'}},
+    '656' : {'name':'Exit Delay in Progress', 'handler':'partition_state_change', 'status':{'exit_delay' : True, 'alpha' : 'Exit Delay In Progress'}},
+    '657' : {'name':'Entry Delay in Progress', 'handler':'partition_state_change', 'status':{'entry_delay' : True, 'alpha' : 'Entry Delay in Progress'}},
 }

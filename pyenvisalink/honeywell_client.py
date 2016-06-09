@@ -65,10 +65,12 @@ class HoneywellClient(EnvisalinkClient):
             # Envisalink command responses.  Drop the trailing $ sentinel.
             inputList = parse.group(1).split(',')
             code = inputList[0]
+            cmd['code'] = code
             cmd['data'] = ','.join(inputList[1:])
         elif not self._loggedin:
             # assume it is login info
             code = rawInput
+            cmd['code'] = code
             cmd['data'] = ''
         else:
             _LOGGER.error("Unrecognized data recieved from the envisalink. Ignoring.")    
@@ -82,22 +84,22 @@ class HoneywellClient(EnvisalinkClient):
                 
         return cmd
 
-    def handle_login(self, data):
+    def handle_login(self, code, data):
         """When the envisalink asks us for our password- send it."""
         self.send_data(self._alarmPanel.password) 
         
-    def handle_command_response(self, data):
+    def handle_command_response(self, code, data):
         """Handle the envisalink's initial response to our commands."""
         responseString = evl_TPI_Response_Codes[data]
         _LOGGER.debug("Envisalink response: " + responseString)
         if data != '00':
             logging.error("error sending command to envisalink.  Response was: " + responseString)
 			
-    def handle_poll_response(self, data):
+    def handle_poll_response(self, code, data):
         """Handle the response to our keepalive messages."""
-        self.handle_command_response(data)
+        self.handle_command_response(code, data)
         
-    def handle_keypad_update(self, data):
+    def handle_keypad_update(self, code, data):
         """Handle the response to when the envisalink sends keypad updates our way."""
         dataList = data.split(',')
         # make sure data is in format we expect, current TPI seems to send bad data every so ofen
@@ -122,7 +124,7 @@ class HoneywellClient(EnvisalinkClient):
                                                                    })
         _LOGGER.debug(json.dumps(self._alarmPanel.alarm_state['partition'][partitionNumber]['status']))
 
-    def handle_zone_state_change(self, data):
+    def handle_zone_state_change(self, code, data):
         """Handle when the envisalink sends us a zone change."""
         # Envisalink TPI is inconsistent at generating these
         bigEndianHexString = ''
@@ -159,7 +161,7 @@ class HoneywellClient(EnvisalinkClient):
 
                 _LOGGER.debug("(zone %i) is %s", zoneNumber, "Open/Faulted" if zoneBit == '1' else "Closed/Not Faulted")
 
-    def handle_partition_state_change(self, data):
+    def handle_partition_state_change(self, code, data):
         """Handle when the envisalink sends us a partition change."""
         for currentIndex in range(0, 8):
             partitionStateCode = data[currentIndex * 2:(currentIndex * 2) + 2]
@@ -177,7 +179,7 @@ class HoneywellClient(EnvisalinkClient):
             _LOGGER.debug('Parition ' + str(partitionNumber) + ' is in state ' + partitionState['name'])
             _LOGGER.debug(json.dumps(self._alarmPanel.alarm_state['partition'][partitionNumber]['status']))
 
-    def handle_realtime_cid_event(self, data):
+    def handle_realtime_cid_event(self, code, data):
         """Handle when the envisalink sends us an alarm arm/disarm/trigger."""
         eventTypeInt = int(data[0])
         eventType = evl_CID_Qualifiers[eventTypeInt]

@@ -28,10 +28,10 @@ class EnvisalinkClient(asyncio.Protocol):
         """Public method for initiating connectivity with the envisalink."""
         self._shutdown = False
         self.connect()
-        asyncio.ensure_future(self.keep_alive())
+        asyncio.async(self.keep_alive())
 
         if self._alarmPanel.zone_timer_interval > 0:
-            asyncio.ensure_future(self.periodic_zone_timer_dump())
+            asyncio.async(self.periodic_zone_timer_dump())
 
         workerThread = threading.Thread(target=self.runEventLoop, args=())
         workerThread.start()
@@ -47,7 +47,7 @@ class EnvisalinkClient(asyncio.Protocol):
         """Internal method for making the physical connection."""
         _LOGGER.info(str.format("Started to connect to Envisalink... at {0}:{1}", self._alarmPanel.host, self._alarmPanel.port))
         coro = self._eventLoop.create_connection(lambda: self, self._alarmPanel.host, self._alarmPanel.port)
-        asyncio.ensure_future(coro)
+        asyncio.async(coro)
         
     def connection_made(self, transport):
         """asyncio callback for a successful connection."""
@@ -83,7 +83,7 @@ class EnvisalinkClient(asyncio.Protocol):
     def send_data(self, data):
         """Raw data send- just make sure it's encoded properly and logged."""
         _LOGGER.debug(str.format('TX > {0}', data.encode('ascii')))
-        self._transport.write((data + '\n').encode('ascii'))
+        self._transport.write((data + '\r\n').encode('ascii'))
 
     def send_command(self, code, data):
         """Used to send a properly formatted command to the envisalink"""
@@ -133,17 +133,20 @@ class EnvisalinkClient(asyncio.Protocol):
             result = ''
             _LOGGER.debug('----------------------------------------')
             _LOGGER.debug(str.format('RX < {0}', fullData))
-            lines = str.split(fullData, '\n')
+            lines = str.split(fullData, '\r\n')
             for line in lines:
                 cmd = self.parseHandler(line)
             
                 try:
-                    _LOGGER.debug(str.format('calling handler: {0}', cmd['handler']))
+                    _LOGGER.debug(str.format('calling handler: {0} for code: {1}', cmd['handler'], cmd['code']))
                     handlerFunc = getattr(self, cmd['handler'])
-                    result = handlerFunc(cmd['data'])
+                    result = handlerFunc(cmd['code'], cmd['data'])
     
                 except AttributeError:
-                    _LOGGER.warning(str.format("No handler exists for command: {0}. Skipping.", cmd['handler']))                
+                    _LOGGER.warning(str.format("No handler exists for command: {0}. Skipping.", cmd['handler']))
+
+                except KeyError:
+                    _LOGGER.warning("No handler configured for evl command.")
             
                 try:
                     _LOGGER.debug(str.format('Invoking callback: {0}', cmd['callback']))
@@ -151,7 +154,10 @@ class EnvisalinkClient(asyncio.Protocol):
                     callbackFunc(result)
     
                 except AttributeError:
-                    _LOGGER.warning(str.format("No callback exists for command: {0}. Skipping.", cmd['callback']))                
+                    _LOGGER.warning(str.format("No callback exists for command: {0}. Skipping.", cmd['callback']))
+
+                except KeyError:
+                    _LOGGER.warning("No callback configured for evl command.")
 
                 _LOGGER.debug('----------------------------------------')
 
@@ -189,52 +195,52 @@ class EnvisalinkClient(asyncio.Protocol):
             zoneNumber += 1
         return returnItems
             
-    def handle_login(self, data):
+    def handle_login(self, code, data):
         """Handler for when the envisalink challenges for password."""
         raise NotImplementedError()
 
-    def handle_login_success(self, data):
+    def handle_login_success(self, code, data):
         """Handler for when the envisalink accepts our credentials."""
         self._loggedin = True
         _LOGGER.debug('Password accepted, session created')
 
-    def handle_login_failure(self, data):
+    def handle_login_failure(self, code, data):
         """Handler for when the envisalink rejects our credentials."""
         self._loggedin = False
         _LOGGER.error('Password is incorrect. Server is closing socket connection.')
         self.stop()
 
-    def handle_login_timeout(self, data):
+    def handle_login_timeout(self, code, data):
         """Handler for if we fail to send a password in time."""
         self._loggedin = False
         _LOGGER.error('Envisalink timed out waiting for password, whoops that should never happen. Server is closing socket connection')
         self.disconnect()
 
-    def handle_keypad_update(self, data):
+    def handle_keypad_update(self, code, data):
         """Handler for when the envisalink wishes to send us a keypad update."""
         raise NotImplementedError()
         
-    def handle_poll_response(self, data):
+    def handle_poll_response(self, code, data):
         """When sending our keepalive message, handle the response back."""
         raise NotImplementedError()
         
-    def handle_command_response(self, data):
+    def handle_command_response(self, code, data):
         """When we send any command- this will be called to parse the initial response."""
         raise NotImplementedError()
 
-    def handle_zone_state_change(self, data):
+    def handle_zone_state_change(self, code, data):
         """Callback for whenever the envisalink reports a zone change."""
         raise NotImplementedError()
 
-    def handle_partition_state_change(self, data):
+    def handle_partition_state_change(self, code, data):
         """Callback for whenever the envisalink reports a partition change."""
         raise NotImplementedError()
 
-    def handle_realtime_cid_event(self, data):
+    def handle_realtime_cid_event(self, code, data):
         """Callback for whenever the envisalink triggers alarm arm/disarm/trigger."""
         raise NotImplementedError()
 
-    def handle_zone_timer_dump(self, data):
+    def handle_zone_timer_dump(self, code, data):
         """Handle the zone timer data."""
         zoneInfoArray = self.convertZoneDump(data)
         for zoneNumber, zoneInfo in enumerate(zoneInfoArray, start=1):
