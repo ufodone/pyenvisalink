@@ -138,7 +138,7 @@ class EnvisalinkClient(asyncio.Protocol):
                 cmd = self.parseHandler(line)
             
                 try:
-                    _LOGGER.debug(str.format('calling handler: {0} for code: {1}', cmd['handler'], cmd['code']))
+                    _LOGGER.debug(str.format('calling handler: {0} for code: {1} with data: {2}', cmd['handler'], cmd['code'], cmd['data']))
                     handlerFunc = getattr(self, cmd['handler'])
                     result = handlerFunc(cmd['code'], cmd['data'])
     
@@ -147,6 +147,7 @@ class EnvisalinkClient(asyncio.Protocol):
 
                 except KeyError:
                     _LOGGER.warning("No handler configured for evl command.")
+                    raise
             
                 try:
                     _LOGGER.debug(str.format('Invoking callback: {0}', cmd['callback']))

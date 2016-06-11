@@ -10,7 +10,7 @@ _LOGGER = logging.getLogger(__name__)
 class DSCClient(EnvisalinkClient):
     """Represents a dsc alarm client."""
 
-    def to_chars(string):
+    def to_chars(self, string):
         chars = []
         for char in string:
             chars.append(ord(char))
@@ -111,10 +111,9 @@ class DSCClient(EnvisalinkClient):
     def handle_zone_state_change(self, code, data):
         """Handle when the envisalink sends us a zone change."""
         """Event 601-610."""
-        parse = re.match('^[0-9]{4}$', data)
+        parse = re.match('^[0-9]{3,4}$', data)
         if parse:
-            partitionNumber = data[0]
-            zoneNumber = int(data[1:3])
+            zoneNumber = int(data[-3:])
             self._alarmPanel.alarm_state['zone'][zoneNumber]['status'].update(evl_ResponseTypes[code]['status'])
             _LOGGER.debug(str.format("(zone {0}) state has updated: {1}", zoneNumber, json.dumps(evl_ResponseTypes[code]['status'])))
             return zoneNumber

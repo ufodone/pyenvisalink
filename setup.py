@@ -2,10 +2,10 @@
 from setuptools import setup
 
 setup(name='pyenvisalink',
-      version='0.4',
+      version='0.6',
       description='A python3 library for running asynchronus communications with envisalink alarm control panel modules.',
       url='https://github.com/Cinntax/pyenvisalink',
-      download_url='https://github.com/Cinntax/pyenvisalink/tarball/0.4',
+      download_url='https://github.com/Cinntax/pyenvisalink/tarball/0.6',
       author='Dan Cinnamon',
       author_email='dcinnamon@gmail.com',
       license='MIT',
