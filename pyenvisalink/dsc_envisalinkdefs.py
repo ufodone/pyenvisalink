@@ -5,6 +5,7 @@
 
 evl_Commands = {
     'KeepAlive' : '000',
+    'StatusReport' : '001',
     'DumpZoneTimers' : '008',
     'PartitionKeypress' : '071',
     'Disarm' : '040',
@@ -15,10 +16,10 @@ evl_Commands = {
 }
 
 evl_ArmModes = {
-        '0' : {'name' : 'Arm Away'},
-        '1' : {'name' : 'Arm Stay'},
-        '2' : {'name' : 'Arm Zero Entry Away'},
-        '3' : {'name' : 'Arm Zero Entry Stay'}
+        '0' : {'name' : 'Arm Away', 'status':{'armed_away': True, 'alpha':'Arm Away', 'exit_delay':False}},
+        '1' : {'name' : 'Arm Stay', 'status':{'armed_stay': True, 'alpha':'Arm Stay', 'exit_delay':False}},
+        '2' : {'name' : 'Arm Zero Entry Away', 'status':{'armed_away': True, 'armed_zero_entry_delay': True, 'alpha':'Arm Zero Entry Away', 'exit_delay':False}},
+        '3' : {'name' : 'Arm Zero Entry Stay', 'status':{'armed_stay': True, 'armed_zero_entry_delay': True, 'alpha':'Arm Zero Entry Stay', 'exit_delay':False}}
     }
 
 evl_ResponseTypes = {
@@ -41,7 +42,7 @@ evl_ResponseTypes = {
 #PARTITION UPDATES
     '650' : {'name':'Ready', 'handler':'partition_state_change', 'status':{'ready' : True, 'alpha' : 'Ready'}},
     '651' : {'name':'Not Ready', 'handler':'partition_state_change', 'status':{'ready' : False, 'alpha' : 'Not Ready'}},
-    '652' : {'name':'Armed', 'handler':'partition_state_change', 'status':{'armed' : True, 'exit_delay' : False, 'alpha' : 'Armed {0}'}},
+    '652' : {'name':'Armed', 'handler':'partition_state_change'},
     '653' : {'name':'Ready - Force Arming Enabled', 'handler':'partition_state_change', 'status':{'ready': True, 'alpha' : 'Ready - Force Arm'}},
     '654' : {'name':'Alarm', 'handler':'partition_state_change', 'status':{'alarm' : True, 'alpha' : 'Alarm'}},
     '655' : {'name':'Disarmed', 'handler':'partition_state_change', 'status' : {'alarm' : False, 'armed' : False, 'exit_delay' : False, 'entry_delay' : False, 'alpha' : 'Disarmed'}},

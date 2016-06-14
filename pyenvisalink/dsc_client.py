@@ -29,6 +29,11 @@ class DSCClient(EnvisalinkClient):
         """Send a command to dump out the zone timers."""
         self.send_command(evl_Commands['DumpZoneTimers'], '')
 
+    def keypresses_to_partition(self, partitionNumber, keypresses):
+        """Send keypresses to a particular partition."""
+        for char in keypresses:
+            self.send_command(evl_Commands['PartitionKeypress'], str.format("{0}{1}", partitionNumber, char))
+
     @asyncio.coroutine        
     def keep_alive(self):
         """Send a keepalive command to reset it's watchdog timer."""
@@ -95,6 +100,11 @@ class DSCClient(EnvisalinkClient):
     def handle_login(self, code, data):
         """When the envisalink asks us for our password- send it."""
         self.send_command(evl_Commands['Login'], self._alarmPanel.password) 
+
+    def handle_login_success(self, code, data):
+        """Handler for when the envisalink accepts our credentials."""
+        super().handle_login_success(code, data)
+        self.send_command(evl_Commands['StatusReport'], '')
         
     def handle_command_response(self, code, data):
         """Handle the envisalink's initial response to our commands."""
@@ -126,17 +136,16 @@ class DSCClient(EnvisalinkClient):
         if code == '652':
             parse = re.match('^[0-9]{2}$', data)
             if parse:
-                partitionNumber = data[0]
-                armType = evl_ArmModes[data[1]]['name']
-                self._alarmPanel.alarm_state['partition'][partitionNumber]['status']['alpha'] = armType
-                _LOGGER.debug(str.format("(partition {0}) state has updated: {1}", partitionNumber, armType))
+                partitionNumber = int(data[0])
+                self._alarmPanel.alarm_state['partition'][partitionNumber]['status'].update(evl_ArmModes[data[1]]['status'])
+                _LOGGER.debug(str.format("(partition {0}) state has updated: {1}", partitionNumber, json.dumps(evl_ArmModes[data[1]]['status'])))
                 return partitionNumber
             else:
                 _LOGGER.error("Invalid data has been passed when arming the alarm.") 
         else:
             parse = re.match('^[0-9]$', data)
             if parse:
-                partitionNumber = data[0]
+                partitionNumber = int(data[0])
                 self._alarmPanel.alarm_state['partition'][partitionNumber]['status'].update(evl_ResponseTypes[code]['status'])
                 _LOGGER.debug(str.format("(partition {0}) state has updated: {1}", partitionNumber, json.dumps(evl_ResponseTypes[code]['status'])))
                 return partitionNumber

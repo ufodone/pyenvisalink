@@ -145,9 +145,9 @@ class EnvisalinkClient(asyncio.Protocol):
                 except AttributeError:
                     _LOGGER.warning(str.format("No handler exists for command: {0}. Skipping.", cmd['handler']))
 
-                except KeyError:
+                except KeyError as err:
                     _LOGGER.warning("No handler configured for evl command.")
-                    raise
+                    _LOGGER.debug(str.format("KeyError: {0}", err))
             
                 try:
                     _LOGGER.debug(str.format('Invoking callback: {0}', cmd['callback']))
