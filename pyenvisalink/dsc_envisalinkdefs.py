@@ -48,4 +48,6 @@ evl_ResponseTypes = {
     '655' : {'name':'Disarmed', 'handler':'partition_state_change', 'status' : {'alarm' : False, 'armed' : False, 'exit_delay' : False, 'entry_delay' : False, 'alpha' : 'Disarmed'}},
     '656' : {'name':'Exit Delay in Progress', 'handler':'partition_state_change', 'status':{'exit_delay' : True, 'alpha' : 'Exit Delay In Progress'}},
     '657' : {'name':'Entry Delay in Progress', 'handler':'partition_state_change', 'status':{'entry_delay' : True, 'alpha' : 'Entry Delay in Progress'}},
+    '750' : {'name':'Disarmed by user', 'handler':'partition_state_change', 'status' : {'alarm' : False, 'armed' : False, 'exit_delay' : False, 'entry_delay' : False, 'alpha' : 'Disarmed'}},
+    '751' : {'name':'Disarmed special', 'handler':'partition_state_change', 'status' : {'alarm' : False, 'armed' : False, 'exit_delay' : False, 'entry_delay' : False, 'alpha' : 'Disarmed'}},
 }

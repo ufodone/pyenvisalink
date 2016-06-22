@@ -52,15 +52,15 @@ class DSCClient(EnvisalinkClient):
 
     def arm_stay_partition(self, code, partitionNumber):
         """Public method to arm/stay a partition."""
-        self.send_command(evl_Commands['ArmStay'], str(partitionNumber) + str(code))
+        self.send_command(evl_Commands['ArmStay'], str(partitionNumber))
 
     def arm_away_partition(self, code, partitionNumber):
         """Public method to arm/away a partition."""
-        self.send_command(evl_Commands['ArmAway'], str(partitionNumber) + str(code))
+        self.send_command(evl_Commands['ArmAway'], str(partitionNumber))
 
     def arm_max_partition(self, code, partitionNumber):
         """Public method to arm/max a partition."""
-        self.send_command(evl_Commands['ArmMax'], str(partitionNumber) + str(code))
+        self.send_command(evl_Commands['ArmMax'], str(partitionNumber))
 
     def disarm_partition(self, code, partitionNumber):
         """Public method to disarm a partition."""
@@ -143,7 +143,7 @@ class DSCClient(EnvisalinkClient):
             else:
                 _LOGGER.error("Invalid data has been passed when arming the alarm.") 
         else:
-            parse = re.match('^[0-9]$', data)
+            parse = re.match('^[0-9]+$', data)
             if parse:
                 partitionNumber = int(data[0])
                 self._alarmPanel.alarm_state['partition'][partitionNumber]['status'].update(evl_ResponseTypes[code]['status'])
