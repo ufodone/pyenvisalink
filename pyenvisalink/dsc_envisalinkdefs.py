@@ -12,7 +12,14 @@ evl_Commands = {
     'ArmStay' : '031',
     'ArmAway' : '030',
     'ArmMax' : '032',
-    'Login' : '005'
+    'Login' : '005',
+    'Panic' : '060'
+}
+
+evl_PanicTypes = {
+    'Fire' : '1',
+    'Ambulance' : '2',
+    'Police' : '3'
 }
 
 evl_ArmModes = {

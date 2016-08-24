@@ -66,6 +66,18 @@ class DSCClient(EnvisalinkClient):
         """Public method to disarm a partition."""
         self.send_command(evl_Commands['Disarm'], str(partitionNumber) + str(code))
 
+    def panic_alarm_fire(self):
+        """Public method to raise a panic fire alarm."""
+        self.send_command(evl_Commands['Panic'], evl_PanicTypes['Fire'])
+
+    def panic_alarm_ambulance(self):
+        """Public method to raise a panic ambulance alarm."""
+        self.send_command(evl_Commands['Panic'], evl_PanicTypes['Ambulance'])
+
+    def panic_alarm_police(self):
+        """Public method to raise a panic police alarm."""
+        self.send_command(evl_Commands['Panic'], evl_PanicTypes['Police'])
+
     def parseHandler(self, rawInput):
         """When the envisalink contacts us- parse out which command and data."""
         cmd = {}

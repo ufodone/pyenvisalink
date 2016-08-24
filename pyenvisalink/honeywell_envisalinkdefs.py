@@ -39,6 +39,12 @@ evl_Commands = {
     'PartitionKeypress' : '03'
 }
 
+evl_PanicTypes = {
+    'Fire' : 'A',
+    'Ambulance' : 'B',
+    'Police' : 'C'
+}
+
 evl_ResponseTypes = {
     'Login:' :  {'name' : 'Login Prompt', 'description' : 'Sent During Session Login Only.', 'handler' : 'login'},
     'OK' : {'name' : 'Login Success', 'description' : 'Send During Session Login Only, successful login', 'handler' : 'login_success'},

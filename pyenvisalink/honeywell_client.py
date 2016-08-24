@@ -56,6 +56,18 @@ class HoneywellClient(EnvisalinkClient):
         """Public method to disarm a partition."""
         self.keypresses_to_partition(partitionNumber, code + '1')
 
+    def panic_alarm_fire(self):
+        """Public method to raise a panic fire alarm."""
+        self.keypresses_to_partition(1, evl_PanicTypes['Fire'])
+
+    def panic_alarm_ambulance(self):
+        """Public method to raise a panic ambulance alarm."""
+        self.keypresses_to_partition(1, evl_PanicTypes['Ambulance'])
+
+    def panic_alarm_police(self):
+        """Public method to raise a panic police alarm."""
+        self.keypresses_to_partition(1, evl_PanicTypes['Police'])
+
     def parseHandler(self, rawInput):
         """When the envisalink contacts us- parse out which command and data."""
         cmd = {}

@@ -245,3 +245,24 @@ class EnvisalinkAlarmPanel:
             self._client.disarm_partition(code, partitionNumber)
         else:
             _LOGGER.error(COMMAND_ERR)
+
+    def panic_alarm_fire(self):
+        """Public method to raise a panic alarm."""
+        if self._client:
+            self._client.panic_alarm_fire()
+        else:
+            _LOGGER.error(COMMAND_ERR)
+
+    def panic_alarm_police(self):
+        """Public method to raise a panic alarm."""
+        if self._client:
+            self._client.panic_alarm_police()
+        else:
+            _LOGGER.error(COMMAND_ERR)
+
+    def panic_alarm_ambulance(self):
+        """Public method to raise a panic alarm."""
+        if self._client:
+            self._client.panic_alarm_ambulance()
+        else:
+            _LOGGER.error(COMMAND_ERR)
