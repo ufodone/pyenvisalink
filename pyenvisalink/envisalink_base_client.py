@@ -120,6 +120,10 @@ class EnvisalinkClient(asyncio.Protocol):
     def disarm_partition(self, code, partitionNumber):
         """Public method to disarm a partition."""
         raise NotImplementedError()
+
+    def panic_alarm(self, panicType):
+        """Public method to trigger the panic alarm."""
+        raise NotImplementedError()
     
     def parseHandler(self, rawInput):
         """When the envisalink contacts us- parse out which command and data."""
