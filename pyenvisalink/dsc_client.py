@@ -97,7 +97,7 @@ class DSCClient(EnvisalinkClient):
                     cmd['handler'] = "handle_%s" % evl_ResponseTypes[code]['handler']
                     cmd['callback'] = "callback_%s" % evl_ResponseTypes[code]['handler']
             except KeyError:
-                _LOGGER.warning(str.format('No handler defined in config for {0}, skipping...', code))
+                _LOGGER.debug(str.format('No handler defined in config for {0}, skipping...', code))
                 
         return cmd
 
