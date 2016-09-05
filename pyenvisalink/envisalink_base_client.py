@@ -15,6 +15,7 @@ class EnvisalinkClient(asyncio.Protocol):
         self._eventLoop = asyncio.get_event_loop()
         self._transport = None
         self._shutdown = False
+        self._cachedCode = None
 
     def runEventLoop(self):
         """Used to spawn our async event loop in a sub-thread."""

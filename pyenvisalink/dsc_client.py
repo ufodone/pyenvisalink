@@ -52,18 +52,22 @@ class DSCClient(EnvisalinkClient):
 
     def arm_stay_partition(self, code, partitionNumber):
         """Public method to arm/stay a partition."""
+        self._cachedCode = code
         self.send_command(evl_Commands['ArmStay'], str(partitionNumber))
 
     def arm_away_partition(self, code, partitionNumber):
         """Public method to arm/away a partition."""
+        self._cachedCode = code
         self.send_command(evl_Commands['ArmAway'], str(partitionNumber))
 
     def arm_max_partition(self, code, partitionNumber):
         """Public method to arm/max a partition."""
+        self._cachedCode = code
         self.send_command(evl_Commands['ArmMax'], str(partitionNumber))
 
     def disarm_partition(self, code, partitionNumber):
         """Public method to disarm a partition."""
+        self._cachedCode = code
         self.send_command(evl_Commands['Disarm'], str(partitionNumber) + str(code))
 
     def panic_alarm(self, panicType):
@@ -155,3 +159,11 @@ class DSCClient(EnvisalinkClient):
                 return partitionNumber
             else:
                 _LOGGER.error("Invalid data has been passed in the parition update.")
+
+    def handle_send_code(self, code, data):
+        """The DSC will, depending upon settings, challenge us with the code.  If the user passed it in, we'll send it."""
+        if self._cachedCode is None:
+            _LOGGER.error("The envisalink asked for a code, but we have no code in our cache.")
+        else:
+            self.send_command(evl_Commands['SendCode'], self._cachedCode)
+            self._cachedCode = None

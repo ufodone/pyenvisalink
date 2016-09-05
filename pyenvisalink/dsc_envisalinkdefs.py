@@ -13,7 +13,8 @@ evl_Commands = {
     'ArmAway' : '030',
     'ArmMax' : '032',
     'Login' : '005',
-    'Panic' : '060'
+    'Panic' : '060',
+    'SendCode' : '200'
 }
 
 evl_PanicTypes = {
@@ -34,6 +35,7 @@ evl_ResponseTypes = {
     '615' : {'name':'Envisalink Zone Timer Dump', 'handler':'zone_timer_dump'},
     '500' : {'name':'Poll', 'handler':'poll_response'},
     '501' : {'name':'Checksum', 'handler':'command_response_error'},
+    '900' : {'name':'EnterCode', 'handler':'send_code'},
 
 #ZONE UPDATES
 
