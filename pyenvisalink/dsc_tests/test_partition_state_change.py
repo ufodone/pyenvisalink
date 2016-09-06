@@ -39,6 +39,6 @@ def handle_partition_state_change(code, data):
 
 _LOGGER.info('Alarm State before:')
 print(alarmState['partition'])
-handle_partition_state_change('652','12')
+handle_partition_state_change('663','1')
 _LOGGER.info('Alarm State after:')
 print(alarmState['partition'])

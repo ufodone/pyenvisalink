@@ -167,3 +167,9 @@ class DSCClient(EnvisalinkClient):
         else:
             self.send_command(evl_Commands['SendCode'], self._cachedCode)
             self._cachedCode = None
+
+    def handle_keypad_update(self, code, data):
+        """Handle general- non partition based info"""
+        for part in self._alarmPanel.alarm_state['partition']:
+            self._alarmPanel.alarm_state['partition'][part]['status'].update(evl_ResponseTypes[code]['status'])
+        _LOGGER.debug(str.format("(All partitions) state has updated: {0}", json.dumps(evl_ResponseTypes[code]['status'])))
