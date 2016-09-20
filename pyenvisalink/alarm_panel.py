@@ -12,7 +12,7 @@ class EnvisalinkAlarmPanel:
         
     def __init__(self, host, port=4025, panelType='HONEYWELL',
                  envisalinkVersion=3, userName='user', password='user',
-                 zoneTimerInterval=20, keepAliveInterval=30):
+                 zoneTimerInterval=20, keepAliveInterval=30, eventLoop=None):
         self._host = host
         self._port = port
         self._panelType = panelType
@@ -28,6 +28,7 @@ class EnvisalinkAlarmPanel:
             self._maxZones = 128
         self._alarmState = AlarmState.get_initial_alarm_state(self._maxZones, self._maxPartitions)
         self._client = None
+        self._eventLoop = eventLoop
         
         self._loginSuccessCallback = self._defaultCallback
         self._loginFailureCallback = self._defaultCallback
@@ -174,10 +175,10 @@ class EnvisalinkAlarmPanel:
         """Connect to the envisalink, and listen for events to occur."""
         logging.info(str.format("Connecting to envisalink on host: {0}, port: {1}", self._host, self._port))
         if self._panelType == 'HONEYWELL':
-            self._client = HoneywellClient(self)
+            self._client = HoneywellClient(self, self._eventLoop)
             self._client.start()
         elif self._panelType == 'DSC':
-            self._client = DSCClient(self)
+            self._client = DSCClient(self, self._eventLoop)
             self._client.start()
         else:
             _LOGGER.error("Unexpected panel type.")    

@@ -9,21 +9,22 @@ _LOGGER = logging.getLogger(__name__)
 class EnvisalinkClient(asyncio.Protocol):
     """Abstract base class for the envisalink TPI client."""
 
-    def __init__(self, panel):
+    def __init__(self, panel, loop):
         self._loggedin = False
         self._alarmPanel = panel
-        self._eventLoop = asyncio.get_event_loop()
+        if loop is None:
+            _LOGGER.info("Creating our own event loop.")
+            self._eventLoop = asyncio.new_event_loop()
+            self._ownLoop = True
+        else:
+            _LOGGER.info("Latching onto an existing event loop.")
+            self._eventLoop = loop
+            self._ownLoop = False
+
+        asyncio.set_event_loop(self._eventLoop)
         self._transport = None
         self._shutdown = False
         self._cachedCode = None
-
-    def runEventLoop(self):
-        """Used to spawn our async event loop in a sub-thread."""
-        asyncio.set_event_loop(self._eventLoop)
-        self._eventLoop.run_forever()
-        self._eventLoop.close()
-
-        _LOGGER.info("Connection shut down.")
 
     def start(self):
         """Public method for initiating connectivity with the envisalink."""
@@ -34,15 +35,22 @@ class EnvisalinkClient(asyncio.Protocol):
         if self._alarmPanel.zone_timer_interval > 0:
             asyncio.async(self.periodic_zone_timer_dump())
 
-        workerThread = threading.Thread(target=self.runEventLoop, args=())
-        workerThread.start()
-    
+        if self._ownLoop:
+            _LOGGER.info("Starting up our own event loop.")
+            self._eventLoop.run_forever()
+            self._eventLoop.close()
+            _LOGGER.info("Connection shut down.")
+
     def stop(self):
         """Public method for shutting down connectivity with the envisalink."""
-        _LOGGER.info("Shutting down Envisalink client connection...")
         self._loggedin = False
         self._shutdown = True
-        self._eventLoop.call_soon_threadsafe(self._eventLoop.stop)
+
+        if self._ownLoop:
+            _LOGGER.info("Shutting down Envisalink client connection...")
+            self._eventLoop.call_soon_threadsafe(self._eventLoop.stop)
+        else:
+            _LOGGER.info("An event loop was given to us- we will shutdown when that event loop shuts down.")
 
     def connect(self):
         """Internal method for making the physical connection."""
