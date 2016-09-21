@@ -40,7 +40,7 @@ class DSCClient(EnvisalinkClient):
         while not self._shutdown:
             if self._loggedin:
                 self.send_command(evl_Commands['KeepAlive'], '')
-            yield from asyncio.sleep(self._alarmPanel.keepalive_interval)
+            yield from asyncio.sleep(self._alarmPanel.keepalive_interval, loop=self._eventLoop)
 
     @asyncio.coroutine
     def periodic_zone_timer_dump(self):
@@ -48,7 +48,7 @@ class DSCClient(EnvisalinkClient):
         while not self._shutdown:
             if self._loggedin:
                 self.dump_zone_timers()
-            yield from asyncio.sleep(self._alarmPanel.zone_timer_interval)
+            yield from asyncio.sleep(self._alarmPanel.zone_timer_interval, loop=self._eventLoop)
 
     def arm_stay_partition(self, code, partitionNumber):
         """Public method to arm/stay a partition."""

@@ -6,6 +6,14 @@ from pyenvisalink import AlarmState
 
 _LOGGER = logging.getLogger(__name__)
 
+try:
+    from asyncio import ensure_future
+except ImportError:
+    # Python 3.4.3 and earlier has this as async
+    # pylint: disable=unused-import
+    from asyncio import async
+    ensure_future = async
+
 class EnvisalinkClient(asyncio.Protocol):
     """Abstract base class for the envisalink TPI client."""
 
@@ -21,7 +29,6 @@ class EnvisalinkClient(asyncio.Protocol):
             self._eventLoop = loop
             self._ownLoop = False
 
-        asyncio.set_event_loop(self._eventLoop)
         self._transport = None
         self._shutdown = False
         self._cachedCode = None
@@ -30,10 +37,10 @@ class EnvisalinkClient(asyncio.Protocol):
         """Public method for initiating connectivity with the envisalink."""
         self._shutdown = False
         self.connect()
-        asyncio.async(self.keep_alive())
+        ensure_future(self.keep_alive(), loop=self._eventLoop)
 
         if self._alarmPanel.zone_timer_interval > 0:
-            asyncio.async(self.periodic_zone_timer_dump())
+            ensure_future(self.periodic_zone_timer_dump(), loop=self._eventLoop)
 
         if self._ownLoop:
             _LOGGER.info("Starting up our own event loop.")
@@ -56,7 +63,7 @@ class EnvisalinkClient(asyncio.Protocol):
         """Internal method for making the physical connection."""
         _LOGGER.info(str.format("Started to connect to Envisalink... at {0}:{1}", self._alarmPanel.host, self._alarmPanel.port))
         coro = self._eventLoop.create_connection(lambda: self, self._alarmPanel.host, self._alarmPanel.port)
-        asyncio.async(coro)
+        ensure_future(coro, loop=self._eventLoop)
         
     def connection_made(self, transport):
         """asyncio callback for a successful connection."""
