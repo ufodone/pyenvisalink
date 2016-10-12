@@ -253,3 +253,10 @@ class EnvisalinkAlarmPanel:
             self._client.panic_alarm(panic_type)
         else:
             _LOGGER.error(COMMAND_ERR)
+
+    def command_output(self, partitionNumber, outputNumber):
+        """Public method to activate an output"""
+        if self._client:
+            self._client.command_output(partitionNumber, outputNumber)
+        else:
+            _LOGGER.error(COMMAND_ERR)
