@@ -14,7 +14,8 @@ evl_Commands = {
     'ArmMax' : '032',
     'Login' : '005',
     'Panic' : '060',
-    'SendCode' : '200'
+    'SendCode' : '200',
+    'CommandOutput' : '020'
 }
 
 evl_PanicTypes = {
