@@ -30,9 +30,8 @@ class DSCClient(EnvisalinkClient):
         self.send_command(evl_Commands['DumpZoneTimers'], '')
 
     def keypresses_to_partition(self, partitionNumber, keypresses):
-        """Send keypresses to a particular partition."""
-        for char in keypresses:
-            self.send_command(evl_Commands['PartitionKeypress'], str.format("{0}{1}", partitionNumber, char))
+        """Send keypresses (max of 6) to a particular partition."""
+	self.send_command(evl_Commands['PartitionKeypress'], str.format("{0}{1}", partitionNumber, keypresses[:6]))
 
     @asyncio.coroutine        
     def keep_alive(self):
@@ -74,6 +73,10 @@ class DSCClient(EnvisalinkClient):
         """Public method to raise a panic alarm."""
         self.send_command(evl_Commands['Panic'], evl_PanicTypes[panicType])
 
+    def command_output(self, partitionNumber, outputNumber):
+        """Used to activate the selected command output"""
+        self.send_command(evl_Commands['CommandOutput'], str.format("{0}{1}", partitionNumber, outputNumber))	
+	
     def parseHandler(self, rawInput):
         """When the envisalink contacts us- parse out which command and data."""
         cmd = {}
