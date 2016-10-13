@@ -159,7 +159,12 @@ class DSCClient(EnvisalinkClient):
                 partitionNumber = int(data[0])
                 self._alarmPanel.alarm_state['partition'][partitionNumber]['status'].update(evl_ResponseTypes[code]['status'])
                 _LOGGER.debug(str.format("(partition {0}) state has updated: {1}", partitionNumber, json.dumps(evl_ResponseTypes[code]['status'])))
-                return partitionNumber
+                '''Log the user who last armed or disarmed the alarm'''
+                if code in ['700','750']:
+                    lastChangedByUser = {'last_changed_by_user': int(data[1:5])}
+                    self._alarmPanel.alarm_state['partition'][partitionNumber]['status'].update(lastChangedByUser)
+
+		return partitionNumber
             else:
                 _LOGGER.error("Invalid data has been passed in the parition update.")
 
