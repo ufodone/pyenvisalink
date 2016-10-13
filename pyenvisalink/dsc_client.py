@@ -164,7 +164,7 @@ class DSCClient(EnvisalinkClient):
                     lastChangedByUser = {'last_changed_by_user': int(data[1:5])}
                     self._alarmPanel.alarm_state['partition'][partitionNumber]['status'].update(lastChangedByUser)
 
-		return partitionNumber
+                return partitionNumber
             else:
                 _LOGGER.error("Invalid data has been passed in the parition update.")
 
