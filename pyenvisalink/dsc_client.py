@@ -162,9 +162,9 @@ class DSCClient(EnvisalinkClient):
                 '''Log the user who last armed or disarmed the alarm'''
                 if code == '700'
                     lastArmedBy = {'last_armed_by_user': int(data[1:5])}
-		    self._alarmPanel.alarm_state['partition'][partitionNumber]['status'].update(lastArmedBy)
+                    self._alarmPanel.alarm_state['partition'][partitionNumber]['status'].update(lastArmedBy)
 		elif code == '750'
-		    lastDisarmedBy = {'last_disarmed_by_user': int(data[1:5])}
+                    lastDisarmedBy = {'last_disarmed_by_user': int(data[1:5])}
                     self._alarmPanel.alarm_state['partition'][partitionNumber]['status'].update(lastDisarmedBy)
 
                 return partitionNumber
