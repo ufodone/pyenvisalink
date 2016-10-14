@@ -76,7 +76,7 @@ class DSCClient(EnvisalinkClient):
     def command_output(self, partitionNumber, outputNumber):
         """Used to activate the selected command output"""
         self.send_command(evl_Commands['CommandOutput'], str.format("{0}{1}", partitionNumber, outputNumber))	
-	
+
     def parseHandler(self, rawInput):
         """When the envisalink contacts us- parse out which command and data."""
         cmd = {}
@@ -124,7 +124,7 @@ class DSCClient(EnvisalinkClient):
     def handle_command_response_error(self, code, data):
         """Handle the case where the DSC passes back a checksum failure."""
         _LOGGER.error("The previous command resulted in a checksum failure.")
-			
+
     def handle_poll_response(self, code, data):
         """Handle the response to our keepalive messages."""
         self.handle_command_response(code, data)
@@ -160,10 +160,10 @@ class DSCClient(EnvisalinkClient):
                 self._alarmPanel.alarm_state['partition'][partitionNumber]['status'].update(evl_ResponseTypes[code]['status'])
                 _LOGGER.debug(str.format("(partition {0}) state has updated: {1}", partitionNumber, json.dumps(evl_ResponseTypes[code]['status'])))
                 '''Log the user who last armed or disarmed the alarm'''
-                if code == '700'
+                if code == '700':
                     lastArmedBy = {'last_armed_by_user': int(data[1:5])}
                     self._alarmPanel.alarm_state['partition'][partitionNumber]['status'].update(lastArmedBy)
-		elif code == '750'
+                elif code == '750':
                     lastDisarmedBy = {'last_disarmed_by_user': int(data[1:5])}
                     self._alarmPanel.alarm_state['partition'][partitionNumber]['status'].update(lastDisarmedBy)
 
