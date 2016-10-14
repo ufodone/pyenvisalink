@@ -159,6 +159,7 @@ class DSCClient(EnvisalinkClient):
                 partitionNumber = int(data[0])
                 self._alarmPanel.alarm_state['partition'][partitionNumber]['status'].update(evl_ResponseTypes[code]['status'])
                 _LOGGER.debug(str.format("(partition {0}) state has updated: {1}", partitionNumber, json.dumps(evl_ResponseTypes[code]['status'])))
+                
                 '''Log the user who last armed or disarmed the alarm'''
                 if code == '700':
                     lastArmedBy = {'last_armed_by_user': int(data[1:5])}
