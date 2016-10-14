@@ -31,7 +31,7 @@ class DSCClient(EnvisalinkClient):
 
     def keypresses_to_partition(self, partitionNumber, keypresses):
         """Send keypresses (max of 6) to a particular partition."""
-	self.send_command(evl_Commands['PartitionKeypress'], str.format("{0}{1}", partitionNumber, keypresses[:6]))
+        self.send_command(evl_Commands['PartitionKeypress'], str.format("{0}{1}", partitionNumber, keypresses[:6]))
 
     @asyncio.coroutine        
     def keep_alive(self):
