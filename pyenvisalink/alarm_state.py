@@ -9,7 +9,7 @@ class AlarmState:
 
         for i in range(1, maxPartitions + 1):
             _alarmState['partition'][i] = {'status': {'alarm': False, 'alarm_in_memory': False, 'armed_away': False,
-                                                      'ac_present': False, 'armed_bypass': False, 'chime': False,
+                                                      'ac_present': True, 'armed_bypass': False, 'chime': False,
                                                       'armed_zero_entry_delay': False, 'alarm_fire_zone': False,
                                                       'trouble': False, 'bat_trouble': False, 'ready': False, 'fire': False,
                                                       'armed_stay': False, 'alpha': 'N/A', 'beep': False,
