@@ -122,7 +122,7 @@ class HoneywellClient(EnvisalinkClient):
                                                                    'ac_present': bool(flags.ac_present), 'armed_bypass': bool(flags.bypass), 'chime': bool(flags.chime),
                                                                    'armed_zero_entry_delay': bool(flags.armed_zero_entry_delay), 'alarm_fire_zone': bool(flags.alarm_fire_zone),
                                                                    'trouble': bool(flags.system_trouble), 'ready': bool(flags.ready), 'fire': bool(flags.fire),
-                                                                   'armed_stay': bool(flags.armed_stay),
+                                                                   'armed_stay': bool(flags.armed_stay), 'bat_trouble': bool(flags.low_battery),
                                                                    'alpha': alpha,
                                                                    'beep': beep,
                                                                    })
