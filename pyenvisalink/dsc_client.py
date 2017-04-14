@@ -80,10 +80,13 @@ class DSCClient(EnvisalinkClient):
     def parseHandler(self, rawInput):
         """When the envisalink contacts us- parse out which command and data."""
         cmd = {}
+        dataoffset = 0
         if rawInput != '':
-            code = rawInput[:3]
+            if re.match('\d\d:\d\d:\d\d\s', rawInput):
+                dataoffset = dataoffset + 9
+            code = rawInput[dataoffset:dataoffset+3]
             cmd['code'] = code
-            cmd['data'] = rawInput[3:][:-2]
+            cmd['data'] = rawInput[dataoffset+3:][:-2]
             
             try:
                 #Interpret the login command further to see what our handler is.
