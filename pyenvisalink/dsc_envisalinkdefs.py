@@ -25,10 +25,10 @@ evl_PanicTypes = {
 }
 
 evl_ArmModes = {
-        '0' : {'name' : 'Arm Away', 'status':{'armed_away': True, 'armed_zero_entry_delay': False, 'alpha':'Arm Away', 'exit_delay':False}},
-        '1' : {'name' : 'Arm Stay', 'status':{'armed_stay': True, 'armed_zero_entry_delay': False, 'alpha':'Arm Stay', 'exit_delay':False}},
-        '2' : {'name' : 'Arm Zero Entry Away', 'status':{'armed_away': True, 'armed_zero_entry_delay': True, 'alpha':'Arm Zero Entry Away', 'exit_delay':False}},
-        '3' : {'name' : 'Arm Zero Entry Stay', 'status':{'armed_stay': True, 'armed_zero_entry_delay': True, 'alpha':'Arm Zero Entry Stay', 'exit_delay':False}}
+        '0' : {'name' : 'Arm Away', 'status':{'armed_away': True, 'armed_zero_entry_delay': False, 'alpha':'Arm Away', 'exit_delay':False, 'entry_delay': False }},
+        '1' : {'name' : 'Arm Stay', 'status':{'armed_stay': True, 'armed_zero_entry_delay': False, 'alpha':'Arm Stay', 'exit_delay':False, 'entry_delay': False }},
+        '2' : {'name' : 'Arm Zero Entry Away', 'status':{'armed_away': True, 'armed_zero_entry_delay': True, 'alpha':'Arm Zero Entry Away', 'exit_delay':False, 'entry_delay': False }},
+        '3' : {'name' : 'Arm Zero Entry Stay', 'status':{'armed_stay': True, 'armed_zero_entry_delay': True, 'alpha':'Arm Zero Entry Stay', 'exit_delay':False, 'entry_delay': False }}
     }
 
 evl_ResponseTypes = {
