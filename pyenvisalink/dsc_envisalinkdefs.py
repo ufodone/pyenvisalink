@@ -62,8 +62,8 @@ evl_ResponseTypes = {
     '664' : {'name':'ChimeOff', 'handler':'partition_state_change', 'status': {'chime': False}},
     '673' : {'name':'Busy', 'handler':'partition_state_change', 'status': {'alpha': 'Busy'}},
     '700' : {'name':'Armed by user', 'handler':'partition_state_change', 'status':{}},
-    '750' : {'name':'Disarmed by user', 'handler':'partition_state_change', 'status' : {'alarm' : False, 'armed_stay' : False, 'armed_away' : False, 'exit_delay' : False, 'entry_delay' : False, 'alpha' : 'Disarmed'}},
-    '751' : {'name':'Disarmed special', 'handler':'partition_state_change', 'status' : {'alarm' : False, 'armed_stay' : False, 'armed_away' : False, 'exit_delay' : False, 'entry_delay' : False, 'alpha' : 'Disarmed'}},
+    '750' : {'name':'Disarmed by user', 'handler':'partition_state_change', 'status' : {'alarm' : False, 'armed_stay' : False, 'armed_away' : False, 'armed_zero_entry_delay': False, 'exit_delay' : False, 'entry_delay' : False, 'alpha' : 'Disarmed'}},
+    '751' : {'name':'Disarmed special', 'handler':'partition_state_change', 'status' : {'alarm' : False, 'armed_stay' : False, 'armed_away' : False, 'armed_zero_entry_delay': False, 'exit_delay' : False, 'entry_delay' : False, 'alpha' : 'Disarmed'}},
     '840' : {'name':'Trouble LED', 'handler':'partition_state_change', 'status':{'trouble' : True}},
     '841' : {'name':'Trouble Clear', 'handler':'partition_state_change', 'status':{'trouble' : False}},
 
