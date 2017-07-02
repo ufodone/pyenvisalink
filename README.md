@@ -7,3 +7,7 @@ This project was originally a fork of the [Envisalink 2DS/3 Alarm Server for Hon
 I'm currently working on integrating it with the [Home Assistant](https://home-assistant.io) project. [Project Page](https://github.com/home-assistant/home-assistant)
 
 This is still beta software, and requires python 3.4+.  So far it has only been tested with an Envisalink 3 and Honeywell Vista 20p panel.
+
+### my changes (crackers8199)
+- added entry/exit delays to all arm/disarm actions
+- make sure armed_zero_entry_delay is cleared on any disarm action or arming without *9

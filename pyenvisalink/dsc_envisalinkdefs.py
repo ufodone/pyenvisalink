@@ -25,10 +25,10 @@ evl_PanicTypes = {
 }
 
 evl_ArmModes = {
-        '0' : {'name' : 'Arm Away', 'status':{'armed_away': True, 'alpha':'Arm Away', 'exit_delay':False}},
-        '1' : {'name' : 'Arm Stay', 'status':{'armed_stay': True, 'alpha':'Arm Stay', 'exit_delay':False}},
-        '2' : {'name' : 'Arm Zero Entry Away', 'status':{'armed_away': True, 'armed_zero_entry_delay': True, 'alpha':'Arm Zero Entry Away', 'exit_delay':False}},
-        '3' : {'name' : 'Arm Zero Entry Stay', 'status':{'armed_stay': True, 'armed_zero_entry_delay': True, 'alpha':'Arm Zero Entry Stay', 'exit_delay':False}}
+        '0' : {'name' : 'Arm Away', 'status':{'armed_away': True, 'armed_zero_entry_delay': False, 'alpha':'Arm Away', 'exit_delay':False, 'entry_delay': False }},
+        '1' : {'name' : 'Arm Stay', 'status':{'armed_stay': True, 'armed_zero_entry_delay': False, 'alpha':'Arm Stay', 'exit_delay':False, 'entry_delay': False }},
+        '2' : {'name' : 'Arm Zero Entry Away', 'status':{'armed_away': True, 'armed_zero_entry_delay': True, 'alpha':'Arm Zero Entry Away', 'exit_delay':False, 'entry_delay': False }},
+        '3' : {'name' : 'Arm Zero Entry Stay', 'status':{'armed_stay': True, 'armed_zero_entry_delay': True, 'alpha':'Arm Zero Entry Stay', 'exit_delay':False, 'entry_delay': False }}
     }
 
 evl_ResponseTypes = {
@@ -55,15 +55,15 @@ evl_ResponseTypes = {
     '652' : {'name':'Armed', 'handler':'partition_state_change'},
     '653' : {'name':'Ready - Force Arming Enabled', 'handler':'partition_state_change', 'status':{'ready': True, 'alpha' : 'Ready - Force Arm'}},
     '654' : {'name':'Alarm', 'handler':'partition_state_change', 'status':{'alarm' : True, 'alpha' : 'Alarm'}},
-    '655' : {'name':'Disarmed', 'handler':'partition_state_change', 'status' : {'alarm' : False, 'armed_stay' : False, 'armed_away' : False, 'exit_delay' : False, 'entry_delay' : False, 'alpha' : 'Disarmed'}},
+    '655' : {'name':'Disarmed', 'handler':'partition_state_change', 'status' : {'alarm' : False, 'armed_stay' : False, 'armed_zero_entry_delay': False, 'armed_away' : False, 'exit_delay' : False, 'entry_delay' : False, 'alpha' : 'Disarmed'}},
     '656' : {'name':'Exit Delay in Progress', 'handler':'partition_state_change', 'status':{'exit_delay' : True, 'alpha' : 'Exit Delay In Progress'}},
     '657' : {'name':'Entry Delay in Progress', 'handler':'partition_state_change', 'status':{'entry_delay' : True, 'alpha' : 'Entry Delay in Progress'}},
     '663' : {'name':'ChimeOn', 'handler':'partition_state_change', 'status': {'chime': True}},
     '664' : {'name':'ChimeOff', 'handler':'partition_state_change', 'status': {'chime': False}},
     '673' : {'name':'Busy', 'handler':'partition_state_change', 'status': {'alpha': 'Busy'}},
     '700' : {'name':'Armed by user', 'handler':'partition_state_change', 'status':{}},
-    '750' : {'name':'Disarmed by user', 'handler':'partition_state_change', 'status' : {'alarm' : False, 'armed_stay' : False, 'armed_away' : False, 'exit_delay' : False, 'entry_delay' : False, 'alpha' : 'Disarmed'}},
-    '751' : {'name':'Disarmed special', 'handler':'partition_state_change', 'status' : {'alarm' : False, 'armed_stay' : False, 'armed_away' : False, 'exit_delay' : False, 'entry_delay' : False, 'alpha' : 'Disarmed'}},
+    '750' : {'name':'Disarmed by user', 'handler':'partition_state_change', 'status' : {'alarm' : False, 'armed_stay' : False, 'armed_away' : False, 'armed_zero_entry_delay': False, 'exit_delay' : False, 'entry_delay' : False, 'alpha' : 'Disarmed'}},
+    '751' : {'name':'Disarmed special', 'handler':'partition_state_change', 'status' : {'alarm' : False, 'armed_stay' : False, 'armed_away' : False, 'armed_zero_entry_delay': False, 'exit_delay' : False, 'entry_delay' : False, 'alpha' : 'Disarmed'}},
     '840' : {'name':'Trouble LED', 'handler':'partition_state_change', 'status':{'trouble' : True}},
     '841' : {'name':'Trouble Clear', 'handler':'partition_state_change', 'status':{'trouble' : False}},
 
