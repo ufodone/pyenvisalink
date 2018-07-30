@@ -185,6 +185,19 @@ class DSCClient(EnvisalinkClient):
 
     def handle_keypad_update(self, code, data):
         """Handle general- non partition based info"""
+        if code == '849':
+            bits = "{0:016b}".format(int(data,16))
+            trouble_description = ""
+            ac_present = True
+            for i in range(0, 7):
+                if bits[15-i] == '1':
+                    trouble_description += evl_verboseTrouble[i] + ', '
+                    if i == 2:
+                        ac_present = False
+            new_status = {'alpha':trouble_description.strip(', '), 'ac_present': ac_present}
+        else:
+            new_status = evl_ResponseTypes[code]['status']
+       
         for part in self._alarmPanel.alarm_state['partition']:
-            self._alarmPanel.alarm_state['partition'][part]['status'].update(evl_ResponseTypes[code]['status'])
-        _LOGGER.debug(str.format("(All partitions) state has updated: {0}", json.dumps(evl_ResponseTypes[code]['status'])))
+            self._alarmPanel.alarm_state['partition'][part]['status'].update(new_status)
+        _LOGGER.debug(str.format("(All partitions) state has updated: {0}", json.dumps(new_status)))
