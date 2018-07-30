@@ -63,6 +63,8 @@ class HoneywellClient(EnvisalinkClient):
     def parseHandler(self, rawInput):
         """When the envisalink contacts us- parse out which command and data."""
         cmd = {}
+        _LOGGER.debug(str.format("Data received:{0}", rawInput))
+
         parse = re.match('([%\^].+)\$', rawInput)
         if parse and parse.group(1):
             # keep first sentinel char to tell difference between tpi and
@@ -71,6 +73,7 @@ class HoneywellClient(EnvisalinkClient):
             code = inputList[0]
             cmd['code'] = code
             cmd['data'] = ','.join(inputList[1:])
+            _LOGGER.debug(str.format("Code:{0} Data:{1}", code, cmd['data']))
         elif not self._loggedin:
             # assume it is login info
             code = rawInput
@@ -78,8 +81,7 @@ class HoneywellClient(EnvisalinkClient):
             cmd['data'] = ''
         else:
             _LOGGER.error("Unrecognized data recieved from the envisalink. Ignoring.")    
-
-        _LOGGER.debug(str.format("Code:{0} Data:{1}", code, cmd['data']))
+            return None
         try:
             cmd['handler'] = "handle_%s" % evl_ResponseTypes[code]['handler']
             cmd['callback'] = "callback_%s" % evl_ResponseTypes[code]['handler']

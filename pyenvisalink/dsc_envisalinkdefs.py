@@ -65,7 +65,7 @@ evl_ResponseTypes = {
     '750' : {'name':'Disarmed by user', 'handler':'partition_state_change', 'status' : {'alarm' : False, 'armed_stay' : False, 'armed_away' : False, 'armed_zero_entry_delay': False, 'exit_delay' : False, 'entry_delay' : False, 'alpha' : 'Disarmed'}},
     '751' : {'name':'Disarmed special', 'handler':'partition_state_change', 'status' : {'alarm' : False, 'armed_stay' : False, 'armed_away' : False, 'armed_zero_entry_delay': False, 'exit_delay' : False, 'entry_delay' : False, 'alpha' : 'Disarmed'}},
     '840' : {'name':'Trouble LED', 'handler':'partition_state_change', 'status':{'trouble' : True}},
-    '841' : {'name':'Trouble Clear', 'handler':'partition_state_change', 'status':{'trouble' : False}},
+    '841' : {'name':'Trouble Clear', 'handler':'partition_state_change', 'status':{'trouble' : False, 'ac_present': True}},
 
 #GENERAL UPDATES
     '621' : {'name':'FireAlarmButton', 'handler':'keypad_update', 'status':{'fire' : True, 'alarm': True, 'alpha' : 'Fire Alarm'}},
@@ -82,4 +82,16 @@ evl_ResponseTypes = {
     '803' : {'name':'ACTroubleOff', 'handler':'keypad_update', 'status':{'ac_present': True, 'alpha' : 'AC Power Restored'}},
     '829' : {'name':'SystemTamper', 'handler':'keypad_update', 'status':{'alpha' : 'System tamper'}},
     '830' : {'name':'SystemTamperOff', 'handler':'keypad_update', 'status':{'alpha' : 'System tamper Restored'}},
+    '849' : {'name':'TroubleVerbose', 'handler':'keypad_update', 'status':None}
+}
+
+evl_verboseTrouble = {
+ 0 : 'Service is Required',
+ 1 : 'AC Power Lost',
+ 2 : 'Telephone Line Fault',
+ 3 : 'Failure to communicate',
+ 4 : 'Zone/Sensor Fault', 
+ 5 : 'Zone/Sensor Tamper',
+ 6 : 'Zone/Sensor Low Battery',
+ 7 : 'Loss of time'
 }
