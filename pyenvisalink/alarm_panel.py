@@ -240,6 +240,13 @@ class EnvisalinkAlarmPanel:
         else:
             _LOGGER.error(COMMAND_ERR)
 
+    def arm_night_partition(self, code, partitionNumber):
+        """Public method to arm/night a partition."""
+        if self._client:
+            self._client.arm_night_partition(code, partitionNumber)
+        else:
+            _LOGGER.error(COMMAND_ERR)
+
     def disarm_partition(self, code, partitionNumber):
         """Public method to disarm a partition."""
         if self._client:

@@ -52,6 +52,10 @@ class HoneywellClient(EnvisalinkClient):
         """Public method to arm/max a partition."""
         self.keypresses_to_partition(partitionNumber, code + '4')
 
+    def arm_night_partition(self, code, partitionNumber):
+        """Public method to arm/max a partition."""
+        self.keypresses_to_partition(partitionNumber, code + '7')
+
     def disarm_partition(self, code, partitionNumber):
         """Public method to disarm a partition."""
         self.keypresses_to_partition(partitionNumber, code + '1')

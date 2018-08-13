@@ -64,6 +64,10 @@ class DSCClient(EnvisalinkClient):
         self._cachedCode = code
         self.send_command(evl_Commands['ArmMax'], str(partitionNumber))
 
+    def arm_night_partition(self, code, partitionNumber):
+        """Public method to arm/max a partition."""
+        self.arm_max_partition(code, partitionNumber)
+
     def disarm_partition(self, code, partitionNumber):
         """Public method to disarm a partition."""
         self._cachedCode = code
