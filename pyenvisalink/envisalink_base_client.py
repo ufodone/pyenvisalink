@@ -152,12 +152,17 @@ class EnvisalinkClient(asyncio.Protocol):
     def data_received(self, data):
         """asyncio callback for any data recieved from the envisalink."""
         if data != '':
-            fullData = data.decode('ascii').strip()
-            cmd = {}
-            result = ''
-            _LOGGER.debug('----------------------------------------')
-            _LOGGER.debug(str.format('RX < {0}', fullData))
-            lines = str.split(fullData, '\r\n')
+            try:
+                fullData = data.decode('ascii').strip()
+                cmd = {}
+                result = ''
+                _LOGGER.debug('----------------------------------------')
+                _LOGGER.debug(str.format('RX < {0}', fullData))
+                lines = str.split(fullData, '\r\n')
+            except:
+                _LOGGER.error('Received invalid message. Skipping.')
+                return
+
             for line in lines:
                 cmd = self.parseHandler(line)
             
@@ -166,10 +171,7 @@ class EnvisalinkClient(asyncio.Protocol):
                     handlerFunc = getattr(self, cmd['handler'])
                     result = handlerFunc(cmd['code'], cmd['data'])
     
-                except (AttributeError, TypeError) as err:
-                    _LOGGER.debug(str.format("No handler exists for command: {0}. Skipping.", cmd['handler']))
-
-                except KeyError as err:
+                except (AttributeError, TypeError, KeyError) as err:
                     _LOGGER.debug("No handler configured for evl command.")
                     _LOGGER.debug(str.format("KeyError: {0}", err))
             
@@ -178,10 +180,7 @@ class EnvisalinkClient(asyncio.Protocol):
                     callbackFunc = getattr(self._alarmPanel, cmd['callback'])
                     callbackFunc(result)
     
-                except (AttributeError, TypeError) as err:
-                    _LOGGER.debug(str.format("No callback exists for command: {0}. Skipping.", cmd['callback']))
-
-                except KeyError:
+                except (AttributeError, TypeError, KeyError) as err:
                     _LOGGER.debug("No callback configured for evl command.")
 
                 _LOGGER.debug('----------------------------------------')
