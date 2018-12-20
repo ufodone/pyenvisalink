@@ -37,6 +37,7 @@ evl_ResponseTypes = {
     '500' : {'name':'Poll', 'handler':'poll_response'},
     '501' : {'name':'Checksum', 'handler':'command_response_error'},
     '900' : {'name':'EnterCode', 'handler':'send_code'},
+    '912' : {'name':'PGMEnterCode', 'handler':'send_code'},
 
 #ZONE UPDATES
 

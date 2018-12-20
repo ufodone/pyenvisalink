@@ -12,9 +12,11 @@ class EnvisalinkAlarmPanel:
         
     def __init__(self, host, port=4025, panelType='HONEYWELL',
                  envisalinkVersion=3, userName='user', password='user',
-                 zoneTimerInterval=20, keepAliveInterval=30, eventLoop=None):
+                 zoneTimerInterval=20, keepAliveInterval=30, eventLoop=None,
+                 connectionTimeout=10):
         self._host = host
         self._port = port
+        self._connectionTimeout = connectionTimeout
         self._panelType = panelType
         self._evlVersion = envisalinkVersion
         self._username = userName
@@ -54,6 +56,10 @@ class EnvisalinkAlarmPanel:
     @ property
     def port(self):
         return self._port
+
+    @ property
+    def connection_timeout(self):
+        return self._connectionTimeout
         
     @property
     def user_name(self):
@@ -261,9 +267,9 @@ class EnvisalinkAlarmPanel:
         else:
             _LOGGER.error(COMMAND_ERR)
 
-    def command_output(self, partitionNumber, outputNumber):
+    def command_output(self, code, partitionNumber, outputNumber):
         """Public method to activate an output"""
         if self._client:
-            self._client.command_output(partitionNumber, outputNumber)
+            self._client.command_output(code, partitionNumber, outputNumber)
         else:
             _LOGGER.error(COMMAND_ERR)

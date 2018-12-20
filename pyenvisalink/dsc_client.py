@@ -33,21 +33,19 @@ class DSCClient(EnvisalinkClient):
         """Send keypresses (max of 6) to a particular partition."""
         self.send_command(evl_Commands['PartitionKeypress'], str.format("{0}{1}", partitionNumber, keypresses[:6]))
 
-    @asyncio.coroutine        
-    def keep_alive(self):
+    async def keep_alive(self):
         """Send a keepalive command to reset it's watchdog timer."""
         while not self._shutdown:
             if self._loggedin:
                 self.send_command(evl_Commands['KeepAlive'], '')
-            yield from asyncio.sleep(self._alarmPanel.keepalive_interval, loop=self._eventLoop)
+            await asyncio.sleep(self._alarmPanel.keepalive_interval, loop=self._eventLoop)
 
-    @asyncio.coroutine
-    def periodic_zone_timer_dump(self):
+    async def periodic_zone_timer_dump(self):
         """Used to periodically get the zone timers to make sure our zones are updated."""
         while not self._shutdown:
             if self._loggedin:
                 self.dump_zone_timers()
-            yield from asyncio.sleep(self._alarmPanel.zone_timer_interval, loop=self._eventLoop)
+            await asyncio.sleep(self._alarmPanel.zone_timer_interval, loop=self._eventLoop)
 
     def arm_stay_partition(self, code, partitionNumber):
         """Public method to arm/stay a partition."""
@@ -77,8 +75,9 @@ class DSCClient(EnvisalinkClient):
         """Public method to raise a panic alarm."""
         self.send_command(evl_Commands['Panic'], evl_PanicTypes[panicType])
 
-    def command_output(self, partitionNumber, outputNumber):
+    def command_output(self, code, partitionNumber, outputNumber):
         """Used to activate the selected command output"""
+        self._cachedCode = code
         self.send_command(evl_Commands['CommandOutput'], str.format("{0}{1}", partitionNumber, outputNumber))	
 
     def parseHandler(self, rawInput):

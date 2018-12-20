@@ -1,4 +1,5 @@
 import asyncio
+import async_timeout
 import threading
 import logging
 import re
@@ -30,7 +31,7 @@ class EnvisalinkClient(asyncio.Protocol):
     def start(self):
         """Public method for initiating connectivity with the envisalink."""
         self._shutdown = False
-        self.connect()
+        ensure_future(self.connect(), loop=self._eventLoop)
         ensure_future(self.keep_alive(), loop=self._eventLoop)
 
         if self._alarmPanel.zone_timer_interval > 0:
@@ -53,12 +54,16 @@ class EnvisalinkClient(asyncio.Protocol):
         else:
             _LOGGER.info("An event loop was given to us- we will shutdown when that event loop shuts down.")
 
-    def connect(self):
+    async def connect(self):
         """Internal method for making the physical connection."""
         _LOGGER.info(str.format("Started to connect to Envisalink... at {0}:{1}", self._alarmPanel.host, self._alarmPanel.port))
-        coro = self._eventLoop.create_connection(lambda: self, self._alarmPanel.host, self._alarmPanel.port)
-        ensure_future(coro, loop=self._eventLoop)
-        
+        try:
+            async with async_timeout.timeout(self._alarmPanel.connection_timeout, loop=self._eventLoop):
+                coro = self._eventLoop.create_connection(lambda: self, self._alarmPanel.host, self._alarmPanel.port)
+                await coro
+        except:
+            self.handle_connect_failure()
+
     def connection_made(self, transport):
         """asyncio callback for a successful connection."""
         _LOGGER.info("Connection Successful!")
@@ -69,26 +74,27 @@ class EnvisalinkClient(asyncio.Protocol):
         self._loggedin = False
         if not self._shutdown:
             _LOGGER.error('The server closed the connection. Reconnecting...')
-            self.reconnect(5)
+            ensure_future(self.reconnect(30), loop=self._eventLoop)
 
-    def reconnect(self, delay):
+    async def reconnect(self, delay):
         """Internal method for reconnecting."""
-        self._eventLoop.call_later(delay, self.connect)
+        self.disconnect()
+        await asyncio.sleep(delay)
+        await self.connect()
 
-    @asyncio.coroutine                         
-    def keep_alive(self):
+    async def keep_alive(self):
         """Used to periodically send a keepalive message to the envisalink."""
         raise NotImplementedError()
 
-    @asyncio.coroutine
-    def periodic_zone_timer_dump(self):
+    async def periodic_zone_timer_dump(self):
         """Used to periodically get the zone timers to make sure our zones are updated."""
         raise NotImplementedError()
             
     def disconnect(self):
         """Internal method for forcing connection closure if hung."""
-        _LOGGER.debug('Closing connection with server for a reconnect...')
-        self._transport.close()
+        _LOGGER.debug('Closing connection with server...')
+        if self._transport:
+            self._transport.close()
             
     def send_data(self, data):
         """Raw data send- just make sure it's encoded properly and logged."""
@@ -135,7 +141,7 @@ class EnvisalinkClient(asyncio.Protocol):
         """Public method to trigger the panic alarm."""
         raise NotImplementedError()
 
-    def command_output(self, partitionNumber, outputNumber):
+    def command_output(self, code, partitionNumber, outputNumber):
         """Public method to activate the selected command output"""
         raise NotImplementedError()
 
@@ -228,11 +234,11 @@ class EnvisalinkClient(asyncio.Protocol):
         _LOGGER.error('Password is incorrect. Server is closing socket connection.')
         self.stop()
 
-    def handle_login_timeout(self, code, data):
-        """Handler for if we fail to send a password in time."""
+    def handle_connect_failure(self):
+        """Handler for if we fail to connect to the envisalink."""
         self._loggedin = False
-        _LOGGER.error('Envisalink timed out waiting for password, whoops that should never happen. Server is closing socket connection')
         self.disconnect()
+        self._alarmPanel._loginTimeoutCallback(False)
 
     def handle_keypad_update(self, code, data):
         """Handler for when the envisalink wishes to send us a keypad update."""
