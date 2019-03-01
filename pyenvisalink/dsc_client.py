@@ -2,6 +2,7 @@ import logging
 import json
 import re
 import asyncio
+import datetime
 from pyenvisalink import EnvisalinkClient
 from pyenvisalink.dsc_envisalinkdefs import *
 
@@ -121,6 +122,8 @@ class DSCClient(EnvisalinkClient):
     def handle_login_success(self, code, data):
         """Handler for when the envisalink accepts our credentials."""
         super().handle_login_success(code, data)
+        dt = datetime.datetime.now().strftime('%H%M%m%d%y')
+        self.send_command(evl_Commands['SetTime'], dt)
         self.send_command(evl_Commands['StatusReport'], '')
         
     def handle_command_response(self, code, data):

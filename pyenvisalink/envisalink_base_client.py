@@ -99,7 +99,13 @@ class EnvisalinkClient(asyncio.Protocol):
     def send_data(self, data):
         """Raw data send- just make sure it's encoded properly and logged."""
         _LOGGER.debug(str.format('TX > {0}', data.encode('ascii')))
-        self._transport.write((data + '\r\n').encode('ascii'))
+        try:
+            self._transport.write((data + '\r\n').encode('ascii'))
+        except RuntimeError as err:
+            _LOGGER.error(str.format('Failed to write to the stream. Reconnecting. ({0}) ', err))
+            self._loggedin = False
+            if not self._shutdown:
+                ensure_future(self.reconnect(30), loop=self._eventLoop)
 
     def send_command(self, code, data):
         """Used to send a properly formatted command to the envisalink"""
