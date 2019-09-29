@@ -243,8 +243,10 @@ class EnvisalinkClient(asyncio.Protocol):
     def handle_connect_failure(self):
         """Handler for if we fail to connect to the envisalink."""
         self._loggedin = False
-        self.disconnect()
-        self._alarmPanel._loginTimeoutCallback(False)
+        if not self._shutdown:
+            _LOGGER.error('Unable to connect to envisalink. Reconnecting...')
+            self._alarmPanel._loginTimeoutCallback(False)
+            ensure_future(self.reconnect(30), loop=self._eventLoop)
 
     def handle_keypad_update(self, code, data):
         """Handler for when the envisalink wishes to send us a keypad update."""
