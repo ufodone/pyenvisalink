@@ -198,7 +198,7 @@ class DSCClient(EnvisalinkClient):
             for i in range(0, 7):
                 if bits[15-i] == '1':
                     trouble_description += evl_verboseTrouble[i] + ', '
-                    if i == 2:
+                    if i == 1:
                         ac_present = False
             new_status = {'alpha':trouble_description.strip(', '), 'ac_present': ac_present}
         else:
