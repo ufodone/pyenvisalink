@@ -572,4 +572,164 @@ evl_CID_Events = {
     "label" : "Latch Key",
     "type"  : "user",
     },
+    750 : {
+    "label" : "Configurable Zone Type",
+    "type"  : "zone",
+    },
+    751 : {
+    "label" : "Configurable Zone Type",
+    "type"  : "zone",
+    },
+    752 : {
+    "label" : "Configurable Zone Type",
+    "type"  : "zone",
+    },
+    753 : {
+    "label" : "Configurable Zone Type",
+    "type"  : "zone",
+    },
+    754 : {
+    "label" : "Configurable Zone Type",
+    "type"  : "zone",
+    },
+    755 : {
+    "label" : "Configurable Zone Type",
+    "type"  : "zone",
+    },
+    756 : {
+    "label" : "Configurable Zone Type",
+    "type"  : "zone",
+    },
+    757 : {
+    "label" : "Configurable Zone Type",
+    "type"  : "zone",
+    },
+    758 : {
+    "label" : "Configurable Zone Type",
+    "type"  : "zone",
+    },
+    759 : {
+    "label" : "Configurable Zone Type",
+    "type"  : "zone",
+    },
+    760 : {
+    "label" : "Configurable Zone Type",
+    "type"  : "zone",
+    },
+    761 : {
+    "label" : "Configurable Zone Type",
+    "type"  : "zone",
+    },
+    762 : {
+    "label" : "Configurable Zone Type",
+    "type"  : "zone",
+    },
+    763 : {
+    "label" : "Configurable Zone Type",
+    "type"  : "zone",
+    },
+    764 : {
+    "label" : "Configurable Zone Type",
+    "type"  : "zone",
+    },
+    765 : {
+    "label" : "Configurable Zone Type",
+    "type"  : "zone",
+    },
+    766 : {
+    "label" : "Configurable Zone Type",
+    "type"  : "zone",
+    },
+    767 : {
+    "label" : "Configurable Zone Type",
+    "type"  : "zone",
+    },
+    768 : {
+    "label" : "Configurable Zone Type",
+    "type"  : "zone",
+    },
+    769 : {
+    "label" : "Configurable Zone Type",
+    "type"  : "zone",
+    },
+    770 : {
+    "label" : "Configurable Zone Type",
+    "type"  : "zone",
+    },
+    771 : {
+    "label" : "Configurable Zone Type",
+    "type"  : "zone",
+    },
+    772 : {
+    "label" : "Configurable Zone Type",
+    "type"  : "zone",
+    },
+    773 : {
+    "label" : "Configurable Zone Type",
+    "type"  : "zone",
+    },
+    774 : {
+    "label" : "Configurable Zone Type",
+    "type"  : "zone",
+    },
+    775 : {
+    "label" : "Configurable Zone Type",
+    "type"  : "zone",
+    },
+    776 : {
+    "label" : "Configurable Zone Type",
+    "type"  : "zone",
+    },
+    777 : {
+    "label" : "Configurable Zone Type",
+    "type"  : "zone",
+    },
+    778 : {
+    "label" : "Configurable Zone Type",
+    "type"  : "zone",
+    },
+    779 : {
+    "label" : "Configurable Zone Type",
+    "type"  : "zone",
+    },
+    780 : {
+    "label" : "Configurable Zone Type",
+    "type"  : "zone",
+    },
+    781 : {
+    "label" : "Configurable Zone Type",
+    "type"  : "zone",
+    },
+    782 : {
+    "label" : "Configurable Zone Type",
+    "type"  : "zone",
+    },
+    783 : {
+    "label" : "Configurable Zone Type",
+    "type"  : "zone",
+    },
+    784 : {
+    "label" : "Configurable Zone Type",
+    "type"  : "zone",
+    },
+    785 : {
+    "label" : "Configurable Zone Type",
+    "type"  : "zone",
+    },
+    786 : {
+    "label" : "Configurable Zone Type",
+    "type"  : "zone",
+    },
+    787 : {
+    "label" : "Configurable Zone Type",
+    "type"  : "zone",
+    },
+    788 : {
+    "label" : "Configurable Zone Type",
+    "type"  : "zone",
+    },
+    789 : {
+    "label" : "Configurable Zone Type",
+    "type"  : "zone",
+    },
 }
