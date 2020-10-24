@@ -98,6 +98,8 @@ evl_CID_Qualifiers = {
     6 : 'Previously Reported Condition Still Present'
 }
 
+evl_ArmDisarm_CIDs = [401, 403, 407, 408, 409, 441, 442]
+
 evl_CID_Events = {
     100 : {
     "label" : "Medical Alert",
