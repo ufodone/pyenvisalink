@@ -193,13 +193,18 @@ class HoneywellClient(EnvisalinkClient):
         eventType = evl_CID_Qualifiers[eventTypeInt]
         cidEventInt = int(data[1:4])
         cidEvent = evl_CID_Events[cidEventInt]
-        partition = data[4:6]
+        partitionNumber = int(data[4:6])
         zoneOrUser = int(data[6:9])
-
+        if cidEventInt in evl_ArmDisarm_CIDs:
+            if eventTypeInt == 1:
+                self._alarmPanel.alarm_state['partition'][partitionNumber]['status'].update({'last_disarmed_by_user': zoneOrUser})
+            if eventTypeInt == 3:
+                self._alarmPanel.alarm_state['partition'][partitionNumber]['status'].update({'last_armed_by_user': zoneOrUser})
+        
         _LOGGER.debug('Event Type is ' + eventType)
         _LOGGER.debug('CID Type is ' + cidEvent['type'])
         _LOGGER.debug('CID Description is ' + cidEvent['label'])
-        _LOGGER.debug('Partition is ' + partition)
+        _LOGGER.debug('Partition is ' + str(partitionNumber))
         _LOGGER.debug(cidEvent['type'] + ' value is ' + str(zoneOrUser))
         
         return cidEvent
