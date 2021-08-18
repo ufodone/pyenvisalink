@@ -84,7 +84,10 @@ evl_ResponseTypes = {
     '803' : {'name':'ACTroubleOff', 'handler':'keypad_update', 'status':{'ac_present': True, 'alpha' : 'AC Power Restored'}},
     '829' : {'name':'SystemTamper', 'handler':'keypad_update', 'status':{'alpha' : 'System tamper'}},
     '830' : {'name':'SystemTamperOff', 'handler':'keypad_update', 'status':{'alpha' : 'System tamper Restored'}},
-    '849' : {'name':'TroubleVerbose', 'handler':'keypad_update', 'status':None}
+    '849' : {'name':'TroubleVerbose', 'handler':'keypad_update', 'status':None},
+
+#ZONE BYPASS UPDATES
+    '616' : {'name':'Zone Bypass', 'handler':'zone_bypass_update', 'status':None}
 }
 
 evl_verboseTrouble = {
