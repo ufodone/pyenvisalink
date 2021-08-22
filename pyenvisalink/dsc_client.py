@@ -14,6 +14,11 @@ from asyncio import ensure_future
 class DSCClient(EnvisalinkClient):
     """Represents a dsc alarm client."""
 
+    def __init__(self, panel, loop):
+        self._refreshZoneByassState = False
+        self._zoneBypassRefreshTask = None
+        super().__init__(panel, loop)
+
     def to_chars(self, string):
         chars = []
         for char in string:
@@ -130,8 +135,9 @@ class DSCClient(EnvisalinkClient):
         self.send_command(evl_Commands['StatusReport'], '')
 
         """ Initiate request for zone bypass information """
-        self._zoneBypassStatusReceived = False
-        ensure_future(self.dump_zone_bypass_status(), loop=self._eventLoop)
+        self._refreshZoneBypassStatus = True
+        if self._zoneBypassRefreshTask == None:
+            self._zoneBypassRefreshTask = ensure_future(self.dump_zone_bypass_status(), loop=self._eventLoop)
 
     def handle_command_response(self, code, data):
         """Handle the envisalink's initial response to our commands."""
@@ -184,6 +190,10 @@ class DSCClient(EnvisalinkClient):
                     lastDisarmedBy = {'last_disarmed_by_user': int(data[1:5])}
                     self._alarmPanel.alarm_state['partition'][partitionNumber]['status'].update(lastDisarmedBy)
 
+                if code == '655':
+                    """Partition was disarmed which means the bypassed zones have likley been reset so force a zone bypass refresh"""
+                    self._refreshZoneBypassStatus = True
+
                 return partitionNumber
             else:
                 _LOGGER.error("Invalid data has been passed in the parition update.")
@@ -217,7 +227,7 @@ class DSCClient(EnvisalinkClient):
 
     def handle_zone_bypass_update(self, code, data):
         """ Handle zone bypass update triggered when *1 is used on the keypad """
-        self._zoneBypassStatusReceived = True
+        self._refreshZoneBypassStatus = False
         if len(data) == 16:
             for byte in range(8):
                 bypassBitfield = int('0x' + data[byte * 2] + data[(byte * 2) + 1], 0)
@@ -235,7 +245,8 @@ class DSCClient(EnvisalinkClient):
         """ Loop requesting zone bypass status until the command succeeds.
             This is necessary to deal with TPI/DSC buffer overrun errors.
             Ideally all commands would be queued with a retry mechanism when BUSY or BUFFER_OVERRUN is received back"""
-        while not self._shutdown and not self._zoneBypassStatusReceived:
-            """ Trigger a 616 'Bypassed Zones Bitfield Dump' to initialize the bypass state """
-            self.keypresses_to_partition(1, "*1#")
+        while not self._shutdown:
+            if self._loggedin and self._refreshZoneBypassStatus:
+                """ Trigger a 616 'Bypassed Zones Bitfield Dump' to initialize the bypass state """
+                self.keypresses_to_partition(1, "*1#")
             await asyncio.sleep(5, loop=self._eventLoop)
