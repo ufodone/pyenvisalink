@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import json
 import re
@@ -8,8 +9,15 @@ from pyenvisalink.dsc_envisalinkdefs import *
 
 _LOGGER = logging.getLogger(__name__)
 
+from asyncio import ensure_future
+
 class DSCClient(EnvisalinkClient):
     """Represents a dsc alarm client."""
+
+    def __init__(self, panel, loop):
+        self._refreshZoneByassState = False
+        self._zoneBypassRefreshTask = None
+        super().__init__(panel, loop)
 
     def to_chars(self, string):
         chars = []
@@ -125,7 +133,12 @@ class DSCClient(EnvisalinkClient):
         dt = datetime.datetime.now().strftime('%H%M%m%d%y')
         self.send_command(evl_Commands['SetTime'], dt)
         self.send_command(evl_Commands['StatusReport'], '')
-        
+
+        """ Initiate request for zone bypass information """
+        self._refreshZoneBypassStatus = True
+        if self._zoneBypassRefreshTask == None:
+            self._zoneBypassRefreshTask = ensure_future(self.dump_zone_bypass_status(), loop=self._eventLoop)
+
     def handle_command_response(self, code, data):
         """Handle the envisalink's initial response to our commands."""
         _LOGGER.debug("DSC ack recieved.")
@@ -177,6 +190,10 @@ class DSCClient(EnvisalinkClient):
                     lastDisarmedBy = {'last_disarmed_by_user': int(data[1:5])}
                     self._alarmPanel.alarm_state['partition'][partitionNumber]['status'].update(lastDisarmedBy)
 
+                if code == '655':
+                    """Partition was disarmed which means the bypassed zones have likley been reset so force a zone bypass refresh"""
+                    self._refreshZoneBypassStatus = True
+
                 return partitionNumber
             else:
                 _LOGGER.error("Invalid data has been passed in the parition update.")
@@ -207,3 +224,29 @@ class DSCClient(EnvisalinkClient):
         for part in self._alarmPanel.alarm_state['partition']:
             self._alarmPanel.alarm_state['partition'][part]['status'].update(new_status)
         _LOGGER.debug(str.format("(All partitions) state has updated: {0}", json.dumps(new_status)))
+
+    def handle_zone_bypass_update(self, code, data):
+        """ Handle zone bypass update triggered when *1 is used on the keypad """
+        self._refreshZoneBypassStatus = False
+        if len(data) == 16:
+            for byte in range(8):
+                bypassBitfield = int('0x' + data[byte * 2] + data[(byte * 2) + 1], 0)
+
+                for bit in range(8):
+                    zoneNumber = (byte * 8) + bit + 1
+                    bypassed = (bypassBitfield & (1 << bit) != 0)
+                    self._alarmPanel.alarm_state['zone'][zoneNumber]['bypassed'] = bypassed
+                    _LOGGER.debug(str.format("(zone {0}) bypass state has updated: {1}", zoneNumber, bypassed))
+
+        else:
+            _LOGGER.error(str.format("Invalid data length ({0}) has been received in the bypass update.", len(data)))
+
+    async def dump_zone_bypass_status(self):
+        """ Loop requesting zone bypass status until the command succeeds.
+            This is necessary to deal with TPI/DSC buffer overrun errors.
+            Ideally all commands would be queued with a retry mechanism when BUSY or BUFFER_OVERRUN is received back"""
+        while not self._shutdown:
+            if self._loggedin and self._refreshZoneBypassStatus:
+                """ Trigger a 616 'Bypassed Zones Bitfield Dump' to initialize the bypass state """
+                self.keypresses_to_partition(1, "*1#")
+            await asyncio.sleep(5, loop=self._eventLoop)
