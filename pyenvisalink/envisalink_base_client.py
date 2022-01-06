@@ -58,7 +58,7 @@ class EnvisalinkClient(asyncio.Protocol):
         """Internal method for making the physical connection."""
         _LOGGER.info(str.format("Started to connect to Envisalink... at {0}:{1}", self._alarmPanel.host, self._alarmPanel.port))
         try:
-            async with async_timeout.timeout(self._alarmPanel.connection_timeout, loop=self._eventLoop):
+            async with async_timeout.timeout(self._alarmPanel.connection_timeout):
                 coro = self._eventLoop.create_connection(lambda: self, self._alarmPanel.host, self._alarmPanel.port)
                 await coro
         except:
