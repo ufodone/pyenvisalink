@@ -147,6 +147,10 @@ class EnvisalinkClient(asyncio.Protocol):
         """Public method to trigger the panic alarm."""
         raise NotImplementedError()
 
+    def toggle_zone_bypass(self, zone):
+        """Public method to toggle a zone's bypass state."""
+        raise NotImplementedError()
+
     def command_output(self, code, partitionNumber, outputNumber):
         """Public method to activate the selected command output"""
         raise NotImplementedError()

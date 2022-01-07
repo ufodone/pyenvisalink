@@ -84,6 +84,10 @@ class DSCClient(EnvisalinkClient):
         """Public method to raise a panic alarm."""
         self.send_command(evl_Commands['Panic'], evl_PanicTypes[panicType])
 
+    def toggle_zone_bypass(self, zone):
+        """Public method to toggle a zone's bypass state."""
+        self.keypresses_to_partition(1, "*1%02d#" % zone)
+
     def command_output(self, code, partitionNumber, outputNumber):
         """Used to activate the selected command output"""
         self._cachedCode = code
