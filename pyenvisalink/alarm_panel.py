@@ -267,6 +267,13 @@ class EnvisalinkAlarmPanel:
         else:
             _LOGGER.error(COMMAND_ERR)
 
+    def toggle_zone_bypass(self, zone):
+        """Public method to toggle a zone's bypass state."""
+        if self._client:
+            self._client.toggle_zone_bypass(zone)
+        else:
+            _LOGGER.error(COMMAND_ERR)
+
     def command_output(self, code, partitionNumber, outputNumber):
         """Public method to activate an output"""
         if self._client:
