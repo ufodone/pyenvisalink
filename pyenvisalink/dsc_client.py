@@ -233,15 +233,21 @@ class DSCClient(EnvisalinkClient):
         """ Handle zone bypass update triggered when *1 is used on the keypad """
         self._refreshZoneBypassStatus = False
         if len(data) == 16:
+            updates = {}
             for byte in range(8):
                 bypassBitfield = int('0x' + data[byte * 2] + data[(byte * 2) + 1], 0)
 
                 for bit in range(8):
                     zoneNumber = (byte * 8) + bit + 1
                     bypassed = (bypassBitfield & (1 << bit) != 0)
+                    if self._alarmPanel.alarm_state['zone'][zoneNumber]['bypassed'] != bypassed:
+                        updates[zoneNumber] = bypassed
                     self._alarmPanel.alarm_state['zone'][zoneNumber]['bypassed'] = bypassed
                     _LOGGER.debug(str.format("(zone {0}) bypass state has updated: {1}", zoneNumber, bypassed))
 
+
+            _LOGGER.debug(str.format("zone bypass updates: {0}", updates))
+            return updates
         else:
             _LOGGER.error(str.format("Invalid data length ({0}) has been received in the bypass update.", len(data)))
 
