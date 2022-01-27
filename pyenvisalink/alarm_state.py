@@ -22,7 +22,8 @@ class AlarmState:
                                                       'bat_trouble': False, 
                                                       'trouble': False, 
                                                       'fire': False, 
-                                                      'alarm': False, 
+                                                      'alarm': False,
+                                                      'PGMrelay': False
                                                       'alarm_fire_zone': False, 
                                                       'alarm_in_memory': False, 
                                                       'armed_away': False, 
