@@ -6,14 +6,13 @@ from pyenvisalink import AlarmState
 _LOGGER = logging.getLogger(__name__)
 COMMAND_ERR = "Cannot run this command while disconnected. Please run start() first."
 
-
 class EnvisalinkAlarmPanel:
     """This class represents an envisalink-based alarm panel."""
         
     def __init__(self, host, port=4025, panelType='HONEYWELL',
                  envisalinkVersion=3, userName='user', password='user',
                  zoneTimerInterval=20, keepAliveInterval=30, eventLoop=None,
-                 connectionTimeout=10):
+                 connectionTimeout=10, zoneBypassEnabled=False):
         self._host = host
         self._port = port
         self._connectionTimeout = connectionTimeout
@@ -31,6 +30,7 @@ class EnvisalinkAlarmPanel:
         self._alarmState = AlarmState.get_initial_alarm_state(self._maxZones, self._maxPartitions)
         self._client = None
         self._eventLoop = eventLoop
+        self._zoneBypassEnabled = zoneBypassEnabled
         
         self._loginSuccessCallback = self._defaultCallback
         self._loginFailureCallback = self._defaultCallback
@@ -269,7 +269,9 @@ class EnvisalinkAlarmPanel:
 
     def toggle_zone_bypass(self, zone):
         """Public method to toggle a zone's bypass state."""
-        if self._client:
+        if not self._zoneBypassEnabled:
+            _LOGGER.error(COMMAND_ERR)
+        elif self._client:
             self._client.toggle_zone_bypass(zone)
         else:
             _LOGGER.error(COMMAND_ERR)
