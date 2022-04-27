@@ -110,9 +110,13 @@ class HoneywellClient(EnvisalinkClient):
     def handle_keypad_update(self, code, data):
         """Handle the response to when the envisalink sends keypad updates our way."""
         dataList = data.split(',')
-        # make sure data is in format we expect, current TPI seems to send bad data every so ofen
+        # Custom messages and alpha fields might contain unescaped commas, so we'll recombine them:
+        if len(dataList) > 5:
+            dataList[4] = ",".join(dataList[4:])
+            del dataList[5:]
+        # make sure data is in format we expect, current TPI seems to send bad data every so often
         #TODO: Make this a regex...
-        if len(dataList) != 5 or "%" in data:
+        if "%" in data:
             _LOGGER.error("Data format invalid from Envisalink, ignoring...")
             return
 
