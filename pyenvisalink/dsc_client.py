@@ -138,10 +138,11 @@ class DSCClient(EnvisalinkClient):
         self.send_command(evl_Commands['SetTime'], dt)
         self.send_command(evl_Commands['StatusReport'], '')
 
-        """ Initiate request for zone bypass information """
-        self._refreshZoneBypassStatus = True
-        if self._zoneBypassRefreshTask == None:
-            self._zoneBypassRefreshTask = ensure_future(self.dump_zone_bypass_status(), loop=self._eventLoop)
+        if self._alarmPanel._zoneBypassEnabled:
+            """ Initiate request for zone bypass information """
+            self._refreshZoneBypassStatus = True
+            if self._zoneBypassRefreshTask == None:
+                self._zoneBypassRefreshTask = ensure_future(self.dump_zone_bypass_status(), loop=self._eventLoop)
 
     def handle_command_response(self, code, data):
         """Handle the envisalink's initial response to our commands."""
@@ -194,7 +195,7 @@ class DSCClient(EnvisalinkClient):
                     lastDisarmedBy = {'last_disarmed_by_user': int(data[1:5])}
                     self._alarmPanel.alarm_state['partition'][partitionNumber]['status'].update(lastDisarmedBy)
 
-                if code == '655':
+                if code == '655' and self._alarmPanel._zoneBypassEnabled:
                     """Partition was disarmed which means the bypassed zones have likley been reset so force a zone bypass refresh"""
                     self._refreshZoneBypassStatus = True
 
@@ -231,6 +232,9 @@ class DSCClient(EnvisalinkClient):
 
     def handle_zone_bypass_update(self, code, data):
         """ Handle zone bypass update triggered when *1 is used on the keypad """
+        if not self._alarmPanel._zoneBypassEnabled:
+            return
+
         self._refreshZoneBypassStatus = False
         if len(data) == 16:
             updates = {}
@@ -257,6 +261,9 @@ class DSCClient(EnvisalinkClient):
             Ideally all commands would be queued with a retry mechanism when BUSY or BUFFER_OVERRUN is received back"""
         while not self._shutdown:
             if self._loggedin and self._refreshZoneBypassStatus:
-                """ Trigger a 616 'Bypassed Zones Bitfield Dump' to initialize the bypass state """
+                """ Trigger a 616 'Bypassed Zones Bitfield Dump' to initialize the bypass state.
+                    There is unfortunately not a specific command to request a zone bypass dump so the *1# keypresses are sent instead.
+                    It appears that limitations in the envisalink API (or perhaps the panel itself) makes it impossible for this feature
+                    to work if the alarm panel is setup to require a code to bypass zones. """
                 self.keypresses_to_partition(1, "*1#")
             await asyncio.sleep(5, loop=self._eventLoop)

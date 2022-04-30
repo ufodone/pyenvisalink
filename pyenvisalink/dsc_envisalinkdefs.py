@@ -78,6 +78,7 @@ evl_ResponseTypes = {
     '626' : {'name':'PanicAlarmButtonOff', 'handler':'keypad_update', 'status':{'alarm': False, 'alpha' : 'Panic Alarm Cleared'}},
     '631' : {'name':'SmokeAlarmButton', 'handler':'keypad_update', 'status':{'alarm': True, 'alpha' : 'Smoke Alarm'}},
     '632' : {'name':'SmokeAlarmButtonOff', 'handler':'keypad_update', 'status':{'alarm': False, 'alpha' : 'Smoke Alarm Cleared'}},
+    '660' : {'name':'PGMrelay', 'handler':'keypad_update', 'status':{'PGMrelay': True, 'alpha' : 'PGM output active'}},
     '800' : {'name':'LowBatTrouble', 'handler':'keypad_update', 'status':{'bat_trouble': True, 'alpha' : 'Low Battery'}},
     '801' : {'name':'LowBatTroubleOff', 'handler':'keypad_update', 'status':{'bat_trouble': False, 'alpha' : 'Low Battery Cleared'}},
     '802' : {'name':'ACTrouble', 'handler':'keypad_update', 'status':{'ac_present': False, 'alpha' : 'AC Power Lost'}},
