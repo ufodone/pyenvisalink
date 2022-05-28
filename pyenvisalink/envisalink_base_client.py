@@ -27,6 +27,7 @@ class EnvisalinkClient(asyncio.Protocol):
         self._transport = None
         self._shutdown = False
         self._cachedCode = None
+        self._reconnect_task = None
 
     def start(self):
         """Public method for initiating connectivity with the envisalink."""
@@ -74,12 +75,20 @@ class EnvisalinkClient(asyncio.Protocol):
         self._loggedin = False
         if not self._shutdown:
             _LOGGER.error('The server closed the connection. Reconnecting...')
-            ensure_future(self.reconnect(30), loop=self._eventLoop)
+            self.schedule_reconnect(30)
+
+    def schedule_reconnect(self, delay):
+        """Internal method for reconnecting."""
+        if self._reconnect_task is not None:
+            _LOGGER.debug('Reconnect already scheduled.')
+        else:
+            self._reconnect_task = ensure_future(self.reconnect(30), loop=self._eventLoop)
 
     async def reconnect(self, delay):
         """Internal method for reconnecting."""
         self.disconnect()
         await asyncio.sleep(delay)
+        self._reconnect_task = None
         await self.connect()
 
     async def keep_alive(self):
@@ -105,7 +114,7 @@ class EnvisalinkClient(asyncio.Protocol):
             _LOGGER.error(str.format('Failed to write to the stream. Reconnecting. ({0}) ', err))
             self._loggedin = False
             if not self._shutdown:
-                ensure_future(self.reconnect(30), loop=self._eventLoop)
+                self.schedule_reconnect(30)
 
     def send_command(self, code, data):
         """Used to send a properly formatted command to the envisalink"""
@@ -250,7 +259,7 @@ class EnvisalinkClient(asyncio.Protocol):
         if not self._shutdown:
             _LOGGER.error('Unable to connect to envisalink. Reconnecting...')
             self._alarmPanel._loginTimeoutCallback(False)
-            ensure_future(self.reconnect(30), loop=self._eventLoop)
+            self.schedule_reconnect(30)
 
     def handle_keypad_update(self, code, data):
         """Handler for when the envisalink wishes to send us a keypad update."""
