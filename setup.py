@@ -2,7 +2,7 @@
 from setuptools import setup
 
 setup(name='pyenvisalink',
-      version='4.7',
+      version='4.6',
       description='A python3 library for running asynchronus communications with envisalink alarm control panel modules.',
       url='https://github.com/Cinntax/pyenvisalink',
       download_url='https://github.com/ufodone/pyenvisalink/tarball/4.6',
