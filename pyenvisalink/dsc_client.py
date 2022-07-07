@@ -47,14 +47,14 @@ class DSCClient(EnvisalinkClient):
         while not self._shutdown:
             if self._loggedin:
                 self.send_command(evl_Commands['KeepAlive'], '')
-            await asyncio.sleep(self._alarmPanel.keepalive_interval, loop=self._eventLoop)
+            await asyncio.sleep(self._alarmPanel.keepalive_interval)
 
     async def periodic_zone_timer_dump(self):
         """Used to periodically get the zone timers to make sure our zones are updated."""
         while not self._shutdown:
             if self._loggedin:
                 self.dump_zone_timers()
-            await asyncio.sleep(self._alarmPanel.zone_timer_interval, loop=self._eventLoop)
+            await asyncio.sleep(self._alarmPanel.zone_timer_interval)
 
     def arm_stay_partition(self, code, partitionNumber):
         """Public method to arm/stay a partition."""
@@ -266,4 +266,4 @@ class DSCClient(EnvisalinkClient):
                     It appears that limitations in the envisalink API (or perhaps the panel itself) makes it impossible for this feature
                     to work if the alarm panel is setup to require a code to bypass zones. """
                 self.keypresses_to_partition(1, "*1#")
-            await asyncio.sleep(5, loop=self._eventLoop)
+            await asyncio.sleep(5)
