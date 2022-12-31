@@ -12,7 +12,8 @@ class EnvisalinkAlarmPanel:
     def __init__(self, host, port=4025, panelType='HONEYWELL',
                  envisalinkVersion=3, userName='user', password='user',
                  zoneTimerInterval=20, keepAliveInterval=30, eventLoop=None,
-                 connectionTimeout=10, zoneBypassEnabled=False):
+                 connectionTimeout=10, zoneBypassEnabled=False,
+                 commandTimeout=5.0):
         self._host = host
         self._port = port
         self._connectionTimeout = connectionTimeout
@@ -31,6 +32,7 @@ class EnvisalinkAlarmPanel:
         self._client = None
         self._eventLoop = eventLoop
         self._zoneBypassEnabled = zoneBypassEnabled
+        self._commandTimeout = commandTimeout
         
         self._loginSuccessCallback = self._defaultCallback
         self._loginFailureCallback = self._defaultCallback
@@ -60,6 +62,10 @@ class EnvisalinkAlarmPanel:
     @ property
     def connection_timeout(self):
         return self._connectionTimeout
+        
+    @ property
+    def command_timeout(self):
+        return self._commandTimeout
         
     @property
     def user_name(self):

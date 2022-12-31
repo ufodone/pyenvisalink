@@ -98,15 +98,19 @@ class HoneywellClient(EnvisalinkClient):
         
     def handle_command_response(self, code, data):
         """Handle the envisalink's initial response to our commands."""
-        responseString = evl_TPI_Response_Codes[data]
-        _LOGGER.debug("Envisalink response: " + responseString)
-        if data != '00':
-            logging.error("error sending command to envisalink.  Response was: " + responseString)
+        if data in evl_TPI_Response_Codes:
+            responseInfo = evl_TPI_Response_Codes[data]
+            _LOGGER.debug("Envisalink response: " + responseInfo["msg"])
+            if data == '00':
+                self.command_succeeded(code)
+            else:
+                _LOGGER.error("error sending command to envisalink.  Response was: " + responseInfo["msg"])
+                self.command_failed(retry=errorInfo['retry'])
+        else:
+            _LOGGER.error(str.format("Unrecognized response code ({0}) received", data))
+            self.command_failed(retry=False)
+
 			
-    def handle_poll_response(self, code, data):
-        """Handle the response to our keepalive messages."""
-        self.handle_command_response(code, data)
-        
     def handle_keypad_update(self, code, data):
         """Handle the response to when the envisalink sends keypad updates our way."""
         dataList = data.split(',')

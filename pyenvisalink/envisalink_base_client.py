@@ -1,8 +1,10 @@
 import asyncio
 import async_timeout
 import threading
+import time
 import logging
 import re
+from enum import Enum
 from pyenvisalink import AlarmState
 
 _LOGGER = logging.getLogger(__name__)
@@ -11,6 +13,27 @@ from asyncio import ensure_future
 
 class EnvisalinkClient(asyncio.Protocol):
     """Abstract base class for the envisalink TPI client."""
+
+    class Operation:
+        class State(Enum):
+            QUEUED = "queued"
+            SENT = "sent"
+            SUCCEEDED = "succeeded"
+            RETRY = "retry"
+            FAILED = "failed"
+
+        cmd = None
+        data = None
+        code = None
+        state = State.QUEUED
+        retryDelay = 0.1 # TODO: set appropriate default
+        expiryTime = 0.0
+
+        def __init__(self, cmd, data, code):
+            self.cmd = cmd
+            self.data = data
+            self.code = code
+
 
     def __init__(self, panel, loop):
         self._loggedin = False
@@ -28,10 +51,14 @@ class EnvisalinkClient(asyncio.Protocol):
         self._shutdown = False
         self._cachedCode = None
         self._reconnect_task = None
+        self._commandTask = None
+        self._commandEvent = asyncio.Event()
+        self._commandQueue = []
 
     def start(self):
         """Public method for initiating connectivity with the envisalink."""
         self._shutdown = False
+        self._commandTask = self._eventLoop.create_task(self.process_command_queue())
         ensure_future(self.connect(), loop=self._eventLoop)
         ensure_future(self.keep_alive(), loop=self._eventLoop)
 
@@ -48,6 +75,9 @@ class EnvisalinkClient(asyncio.Protocol):
         """Public method for shutting down connectivity with the envisalink."""
         self._loggedin = False
         self._shutdown = True
+
+        # Wake up the command processor task to allow it to exit
+        self._commandEvent.set()
 
         if self._ownLoop:
             _LOGGER.info("Shutting down Envisalink client connection...")
@@ -265,10 +295,6 @@ class EnvisalinkClient(asyncio.Protocol):
         """Handler for when the envisalink wishes to send us a keypad update."""
         raise NotImplementedError()
         
-    def handle_poll_response(self, code, data):
-        """When sending our keepalive message, handle the response back."""
-        raise NotImplementedError()
-        
     def handle_command_response(self, code, data):
         """When we send any command- this will be called to parse the initial response."""
         raise NotImplementedError()
@@ -292,3 +318,120 @@ class EnvisalinkClient(asyncio.Protocol):
             self._alarmPanel.alarm_state['zone'][zoneNumber]['status'].update({'open': zoneInfo['status'] == 'open', 'fault': zoneInfo['status'] == 'open'})
             self._alarmPanel.alarm_state['zone'][zoneNumber]['last_fault'] = zoneInfo['seconds']
             _LOGGER.debug("(zone %i) %s", zoneNumber, zoneInfo['status'])
+
+
+    def queue_command(self, cmd, data, code = None):
+        _LOGGER.info(str.format("Queueing command '{0}' data: '{1}'", cmd, data))
+        self._commandQueue.append(self.Operation(cmd, data, code))
+        self._commandEvent.set()
+
+    async def process_command_queue(self):
+        """Manage processing of commands to be issued to the EVL.  Commands are serialized to the EVL to avoid 
+           overwhelming it and to make it easy to pair up responses (since there are no sequence numbers for requests).
+
+           Operations that fail due to a recoverable error (e.g. buffer overruns) will be re-tried with a backoff.
+        """
+        _LOGGER.info("Command processing task started.")
+
+        while not self._shutdown:
+            try:
+                _LOGGER.debug(f"Checking command queue: len={len(self._commandQueue)}")
+                now = time.time()
+                op = None
+                while self._commandQueue:
+                    op = self._commandQueue[0]
+
+                    if op.state == self.Operation.State.SENT:
+                        # Still waiting on a response from the EVL so break out of loop and wait for the response
+                        if now >= op.expiryTime:
+                            # Timeout waiting for response from the EVL so fail the command
+                            _LOGGER.error(f"Command '{op.cmd}' failed due to timeout waiting for response from EVL")
+                            op.state = self.Operation.State.FAILED
+                        break
+                    elif op.state == self.Operation.State.QUEUED:
+                        # Send command to the EVL
+                        op.state = self.Operation.State.SENT
+                        op.expiryTime = now + self._alarmPanel.command_timeout
+                        self._cachedCode = op.code
+                        self.send_command(op.cmd, op.data)
+                    elif op.state == self.Operation.State.SUCCEEDED:
+                        # Remove completed command from head of the queue
+                        self._commandQueue.pop(0)
+                    elif op.state == self.Operation.State.RETRY:
+                        if now >= op.expiryTime:
+                            # Time to re-issue the command
+                            op.state = self.Operation.State.QUEUED
+                        else:
+                            # Not time to re-issue yet so go back to sleep
+                            break
+                    elif op.state == self.Operation.State.FAILED:
+                        # Command completed; check the queue for more
+                        self._commandQueue.pop(0)
+
+                # Wait until there is more work to do
+                try:
+                    if op:
+                        timeout = op.expiryTime - now
+                    else:
+                        # No specific timeout required based on command processing but still make sure we wake up
+                        # periodically as a safe-guard.
+                        timeout = self._alarmPanel.command_timeout
+
+                    self._commandEvent.clear()
+                    _LOGGER.debug(f"Command processor sleeping for {timeout}s.")
+                    await asyncio.wait_for(self._commandEvent.wait(), timeout=timeout)
+                    _LOGGER.debug("Command processor woke up.")
+                except asyncio.exceptions.TimeoutError:
+                    _LOGGER.debug("Command processor woke up due to timeout.")
+                except Exception as ex:
+                    _LOGGER.error(f"Command processor woke up due unexpected exception {ex}")
+
+            except Exception as ex:
+                _LOGGER.error(f"Command processor caught unexpected exception {ex}")
+
+        _LOGGER.info("Command processing task exited.")
+
+    def command_succeeded(self, cmd):
+        """Indicate that a command has been successfully processed by the EVL."""
+
+        if self._commandQueue:
+            op = self._commandQueue[0]
+            if cmd and op.cmd != cmd:
+                _LOGGER.error(f"Command acknowledgement received is different for a different command ({cmd}) than was issued ({op.cmd})")
+            else:
+                op.state = self.Operation.State.SUCCEEDED
+        else:
+            _LOGGER.error(f"Command acknowledgement received for '{cmd}' when no command was issued.")
+
+        # Wake up the command processing task to process this result
+        self._commandEvent.set()
+
+    def command_failed(self, retry = False):
+        """Indicate that a command issued to the EVL has failed."""
+
+        if self._commandQueue:
+            op = self._commandQueue[0]
+            if op.state != self.Operation.State.SENT:
+                _LOGGER.error("Command/system error received when no command was issued.")
+            elif retry == False:
+                # No retry request so tag the command as failed
+                op.state = self.Operation.State.FAILED
+            else:
+                # Update the retry delay based on an exponential backoff
+                op.retryDelay *= 2
+
+                if op.retryDelay >= self._alarmPanel.command_timeout:
+                    # Don't extend the retry delay beyond the overall command timeout
+                    _LOGGER.error("Maximum command retries attempted; aborting command.")
+                    op.state = self.Operation.State.FAILED
+                else:
+                    # Tag the command to be retried in the future by the command processor task
+                    op.state = self.Operation.State.RETRY
+                    op.expiryTime = time.time() + op.retryDelay
+                    _LOGGER.warn(f"Command '{op.cmd} {op.data}' failed; retry in {op.retryDelay} seconds.")
+        else:
+            _LOGGER.error("Command/system error received when no command is active.")
+
+        # Wake up the command processing task to process this result
+        self._commandEvent.set()
+

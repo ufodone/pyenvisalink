@@ -35,8 +35,9 @@ evl_ArmModes = {
 evl_ResponseTypes = {
     '505' : {'name':'Login Prompt', 'handler':'login'},
     '615' : {'name':'Envisalink Zone Timer Dump', 'handler':'zone_timer_dump'},
-    '500' : {'name':'Poll', 'handler':'poll_response'},
-    '501' : {'name':'Checksum', 'handler':'command_response_error'},
+    '500' : {'name':'Command Acknowledge', 'handler':'command_response'},
+    '501' : {'name':'Command Error', 'handler':'command_response'},
+    '502' : {'name':'System Error', 'handler':'command_response'},
     '900' : {'name':'EnterCode', 'handler':'send_code'},
     '912' : {'name':'PGMEnterCode', 'handler':'send_code'},
 
@@ -100,4 +101,30 @@ evl_verboseTrouble = {
  5 : 'Zone/Sensor Tamper',
  6 : 'Zone/Sensor Low Battery',
  7 : 'Loss of time'
+}
+
+evl_TPI_Response_Codes = {
+    '000' : { 'retry' : False, 'msg': 'No Error' },
+    '001' : { 'retry' : True, 'msg': 'Receive Buffer Overrun (a command is received while another is still being processed)' },
+    '002' : { 'retry' : True, 'msg': 'Receive Buffer Overflow' },
+    '003' : { 'retry' : False, 'msg': 'Transmit Buffer Overflow' },
+
+    '010' : { 'retry' : True, 'msg': 'Keybus Transmit Buffer Overrun' },
+    '011' : { 'retry' : False, 'msg': 'Keybus Transmit Time Timeout' },
+    '012' : { 'retry' : False, 'msg': 'Keybus Transmit Mode Timeout' },
+    '013' : { 'retry' : False, 'msg': 'Keybus Transmit Keystring Timeout' },
+    '014' : { 'retry' : False, 'msg': 'Keybus Interface Not Functioning (the TPI cannot communicate with the security system)' },
+    '015' : { 'retry' : False, 'msg': 'Keybus Busy (Attempting to Disarm or Arm with user code)' },
+    '016' : { 'retry' : False, 'msg': 'Keybus Busy – Lockout (The panel is currently in Keypad Lockout – too many disarm attempts)' },
+    '017' : { 'retry' : False, 'msg': 'Keybus Busy – Installers Mode (Panel is in installers mode, most functions are unavailable)' },
+    '018' : { 'retry' : False, 'msg': 'Keybus Busy – General Busy (The requested partition is busy)' },
+
+    '020' : { 'retry' : False, 'msg': 'API Command Syntax Error' },
+    '021' : { 'retry' : False, 'msg': 'API Command Partition Error (Requested Partition is out of bounds)' },
+    '022' : { 'retry' : False, 'msg': 'API Command Not Supported' },
+    '023' : { 'retry' : False, 'msg': 'API SystemNotArmed (sent in response to a disarm command)' },
+    '024' : { 'retry' : False, 'msg': 'API System Not Ready to Arm (system is either not-secure, in exit-delay, or already armed)' },
+    '025' : { 'retry' : False, 'msg': 'API Command Invalid Length' },
+    '026' : { 'retry' : False, 'msg': 'API User Code not Required' },
+    '027' : { 'retry' : False, 'msg': 'API Invalid Characters in Command (no alpha characters are allowed except for checksum)' },
 }
