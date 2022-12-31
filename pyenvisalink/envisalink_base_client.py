@@ -26,8 +26,8 @@ class EnvisalinkClient(asyncio.Protocol):
         data = None
         code = None
         state = State.QUEUED
-        retryDelay = 0.1 # TODO: set appropriate default
-        expiryTime = 0.0
+        retryDelay = 0.1 # Start the retry backoff at 100ms
+        expiryTime = 0
 
         def __init__(self, cmd, data, code):
             self.cmd = cmd
@@ -322,7 +322,9 @@ class EnvisalinkClient(asyncio.Protocol):
 
     def queue_command(self, cmd, data, code = None):
         _LOGGER.info(str.format("Queueing command '{0}' data: '{1}'", cmd, data))
-        self._commandQueue.append(self.Operation(cmd, data, code))
+        op = self.Operation(cmd, data, code)
+        op.expiryTime = time.time() + self._alarmPanel.command_timeout
+        self._commandQueue.append(op)
         self._commandEvent.set()
 
     async def process_command_queue(self):
@@ -351,7 +353,6 @@ class EnvisalinkClient(asyncio.Protocol):
                     elif op.state == self.Operation.State.QUEUED:
                         # Send command to the EVL
                         op.state = self.Operation.State.SENT
-                        op.expiryTime = now + self._alarmPanel.command_timeout
                         self._cachedCode = op.code
                         self.send_command(op.cmd, op.data)
                     elif op.state == self.Operation.State.SUCCEEDED:
