@@ -260,10 +260,28 @@ class DSCClient(EnvisalinkClient):
             This is necessary to deal with TPI/DSC buffer overrun errors.
             Ideally all commands would be queued with a retry mechanism when BUSY or BUFFER_OVERRUN is received back"""
         while not self._shutdown:
-            if self._loggedin and self._refreshZoneBypassStatus:
+            if self._loggedin and self._refreshZoneBypassStatus and not self.is_any_partition_armed():
                 """ Trigger a 616 'Bypassed Zones Bitfield Dump' to initialize the bypass state.
                     There is unfortunately not a specific command to request a zone bypass dump so the *1# keypresses are sent instead.
                     It appears that limitations in the envisalink API (or perhaps the panel itself) makes it impossible for this feature
-                    to work if the alarm panel is setup to require a code to bypass zones. """
+                    to work if the alarm panel is setup to require a code to bypass zones.
+
+                    Only issue the command if the alarm is not armed since the EVL will not send a 616 when in the armed state.
+                    """
                 self.keypresses_to_partition(1, "*1#")
             await asyncio.sleep(5)
+
+    def is_any_partition_armed(self) -> bool:
+        """ Check if any partition is either armed or arming/disarming """
+        for partition, state in self._alarmPanel.alarm_state['partition'].items():
+            status = state['status']
+            away = status.get('armed_away', False)
+            stay = status.get('armed_stay', False)
+            exit_delay = status.get('exit_delay', False)
+            entry_delay = status.get('entry_delay', False)
+            if away or stay or exit_delay or entry_delay:
+                _LOGGER.debug(f"is_any_partition_armed: partition {partition} status={status}")
+                return True
+        _LOGGER.debug("is_any_partition_armed: no partitions are armed")
+        return False
+
