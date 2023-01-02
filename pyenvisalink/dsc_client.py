@@ -25,10 +25,10 @@ class DSCClient(EnvisalinkClient):
         """part of each command includes a checksum.  Calculate."""
         return ("%02X" % sum(self.to_chars(code)+self.to_chars(data)))[-2:]
 
-    def send_command(self, code, data):
+    async def send_command(self, code, data):
         """Send a command in the proper honeywell format."""
         to_send = code + data + self.get_checksum(code, data)
-        self.send_data(to_send)
+        await self.send_data(to_send)
 
     def dump_zone_timers(self):
         """Send a command to dump out the zone timers."""
@@ -207,12 +207,12 @@ class DSCClient(EnvisalinkClient):
             else:
                 _LOGGER.error("Invalid data has been passed in the parition update.")
 
-    def handle_send_code(self, code, data):
+    async def handle_send_code(self, code, data):
         """The DSC will, depending upon settings, challenge us with the code.  If the user passed it in, we'll send it."""
         if self._cachedCode is None:
             _LOGGER.error("The envisalink asked for a code, but we have no code in our cache.")
         else:
-            self.send_command(evl_Commands['SendCode'], self._cachedCode)
+            await self.send_command(evl_Commands['SendCode'], self._cachedCode)
             self._cachedCode = None
 
     def handle_keypad_update(self, code, data):

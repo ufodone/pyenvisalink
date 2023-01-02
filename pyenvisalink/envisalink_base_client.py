@@ -46,10 +46,10 @@ class EnvisalinkClient(asyncio.Protocol):
             self._eventLoop = loop
             self._ownLoop = False
 
-        self._transport = None
+        self._reader = None
+        self._writer = None
         self._shutdown = False
         self._cachedCode = None
-        self._reconnect_task = None
         self._commandTask = None
         self._commandEvent = asyncio.Event()
         self._commandQueue = []
@@ -58,7 +58,7 @@ class EnvisalinkClient(asyncio.Protocol):
         """Public method for initiating connectivity with the envisalink."""
         self._shutdown = False
         self._commandTask = self._eventLoop.create_task(self.process_command_queue())
-        self._eventLoop.create_task(self.connect())
+        self._eventLoop.create_task(self.read_loop())
         self._eventLoop.create_task(self.keep_alive())
 
         if self._alarmPanel.zone_timer_interval > 0:
@@ -84,41 +84,37 @@ class EnvisalinkClient(asyncio.Protocol):
         else:
             _LOGGER.info("An event loop was given to us- we will shutdown when that event loop shuts down.")
 
-    async def connect(self):
-        """Internal method for making the physical connection."""
-        _LOGGER.info(str.format("Started to connect to Envisalink... at {0}:{1}", self._alarmPanel.host, self._alarmPanel.port))
-        try:
-            async with async_timeout.timeout(self._alarmPanel.connection_timeout):
-                coro = self._eventLoop.create_connection(lambda: self, self._alarmPanel.host, self._alarmPanel.port)
-                await coro
-        except:
-            self.handle_connect_failure()
+    async def read_loop(self):
+        """Internal method handling connecting to the EVL and consuming data from it."""
+        while not self._shutdown:
+            self._reader = None
+            self._writer = None
 
-    def connection_made(self, transport):
-        """asyncio callback for a successful connection."""
-        _LOGGER.info("Connection Successful!")
-        self._transport = transport
-        
-    def connection_lost(self, exc):
-        """asyncio callback for connection lost."""
-        self._loggedin = False
-        if not self._shutdown:
-            _LOGGER.error('The server closed the connection. Reconnecting...')
-            self.schedule_reconnect(30)
+            _LOGGER.debug("Starting read loop.")
 
-    def schedule_reconnect(self, delay):
-        """Internal method for reconnecting."""
-        if self._reconnect_task is not None:
-            _LOGGER.debug('Reconnect already scheduled.')
-        else:
-            self._reconnect_task = self._eventLoop.create_task(self.reconnect(30))
+            await self.connect()
 
-    async def reconnect(self, delay):
-        """Internal method for reconnecting."""
-        self.disconnect()
-        await asyncio.sleep(delay)
-        self._reconnect_task = None
-        await self.connect()
+            if self._reader and self._writer:
+                # Connected to EVL; start reading data from the connection
+                try:
+                    while not self._shutdown:
+                        _LOGGER.debug("Waiting for data from EVL")
+                        data = await self._reader.read(n=256)
+                        if not data or len(data) == 0 or self._reader.at_eof():
+                            _LOGGER.error('The server closed the connection.')
+                            self.disconnect()
+                            break
+                        self.process_data(data)
+                except Exception as ex:
+                    _LOGGER.error("Caught unexpected exception: %r", ex)
+                    self.disconnect()
+
+            # Lost connection so reattempt connection in a bit
+            if not self._shutdown:
+                reconnect_time = 30
+                _LOGGER.error("Reconnection attempt in %ds", reconnect_time)
+                await asyncio.sleep(reconnect_time)
+
 
     async def keep_alive(self):
         """Used to periodically send a keepalive message to the envisalink."""
@@ -128,22 +124,42 @@ class EnvisalinkClient(asyncio.Protocol):
         """Used to periodically get the zone timers to make sure our zones are updated."""
         raise NotImplementedError()
             
+    async def connect(self):
+        _LOGGER.info(str.format("Started to connect to Envisalink... at {0}:{1}", self._alarmPanel.host, self._alarmPanel.port))
+        try:
+            coro = asyncio.open_connection(self._alarmPanel.host, self._alarmPanel.port)
+            self._reader, self._writer = await asyncio.wait_for(coro, self._alarmPanel.connection_timeout)
+            _LOGGER.info("Connection Successful!")
+        except Exception as ex:
+            self._loggedin = False
+            if not self._shutdown:
+                _LOGGER.error('Unable to connect to envisalink: %r', ex)
+                self._alarmPanel._loginTimeoutCallback(False)
+            self.disconnect()
+
     def disconnect(self):
         """Internal method for forcing connection closure if hung."""
-        _LOGGER.debug('Closing connection with server...')
-        if self._transport:
-            self._transport.close()
+        _LOGGER.debug('Cleaning up from disconnection with server.')
+        self._loggedin = False
+        if self._writer:
+            self._writer.close()
+            self._writer = None
+        if self._reader:
+            self._reader = None
             
-    def send_data(self, data):
+    async def send_data(self, data):
         """Raw data send- just make sure it's encoded properly and logged."""
         _LOGGER.debug(str.format('TX > {0}', data.encode('ascii')))
         try:
-            self._transport.write((data + '\r\n').encode('ascii'))
-        except RuntimeError as err:
-            _LOGGER.error(str.format('Failed to write to the stream. Reconnecting. ({0}) ', err))
-            self._loggedin = False
-            if not self._shutdown:
-                self.schedule_reconnect(30)
+            self._writer.write((data + '\r\n').encode('ascii'))
+            await self._writer.drain()
+        except Exception as err:
+            _LOGGER.error('Failed to write to the stream: %r', err)
+            self.disconnect()
+
+    async def send_command(self, code, data):
+        """Used to send a properly formatted command to the envisalink"""
+        raise NotImplementedError()
 
     def send_command(self, code, data):
         """Used to send a properly formatted command to the envisalink"""
@@ -197,7 +213,7 @@ class EnvisalinkClient(asyncio.Protocol):
         """When the envisalink contacts us- parse out which command and data."""
         raise NotImplementedError()
         
-    def data_received(self, data):
+    def process_data(self, data):
         """asyncio callback for any data recieved from the envisalink."""
         if data != '':
             try:
@@ -282,14 +298,6 @@ class EnvisalinkClient(asyncio.Protocol):
         _LOGGER.error('Password is incorrect. Server is closing socket connection.')
         self.stop()
 
-    def handle_connect_failure(self):
-        """Handler for if we fail to connect to the envisalink."""
-        self._loggedin = False
-        if not self._shutdown:
-            _LOGGER.error('Unable to connect to envisalink. Reconnecting...')
-            self._alarmPanel._loginTimeoutCallback(False)
-            self.schedule_reconnect(30)
-
     def handle_keypad_update(self, code, data):
         """Handler for when the envisalink wishes to send us a keypad update."""
         raise NotImplementedError()
@@ -358,7 +366,7 @@ class EnvisalinkClient(asyncio.Protocol):
                         # Send command to the EVL
                         op.state = self.Operation.State.SENT
                         self._cachedCode = op.code
-                        self.send_command(op.cmd, op.data)
+                        await self.send_command(op.cmd, op.data)
                     elif op.state == self.Operation.State.SUCCEEDED:
                         # Remove completed command from head of the queue
                         self._commandQueue.pop(0)
