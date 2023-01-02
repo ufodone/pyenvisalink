@@ -46,8 +46,7 @@ class EnvisalinkAlarmPanel:
         self._zoneTimerCallback = self._defaultCallback
 
         loggingconfig = {'level': 'DEBUG',
-                     'format': '%(asctime)s %(levelname)s <%(name)s %(module)s %(funcName)s> %(message)s',
-                     'datefmt': '%a, %d %b %Y %H:%M:%S'}
+                     'format': '%(asctime)s %(levelname)s <%(name)s %(module)s %(funcName)s> %(message)s'}
 
         logging.basicConfig(**loggingconfig)
 
