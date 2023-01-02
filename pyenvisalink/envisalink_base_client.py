@@ -5,7 +5,7 @@ import time
 import logging
 import re
 from enum import Enum
-from pyenvisalink import AlarmState
+from .alarm_state import AlarmState
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -158,10 +158,6 @@ class EnvisalinkClient(asyncio.Protocol):
             self.disconnect()
 
     async def send_command(self, code, data):
-        """Used to send a properly formatted command to the envisalink"""
-        raise NotImplementedError()
-
-    def send_command(self, code, data):
         """Used to send a properly formatted command to the envisalink"""
         raise NotImplementedError()
 

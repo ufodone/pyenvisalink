@@ -2,8 +2,9 @@ import logging
 import json
 import re
 import asyncio
-from pyenvisalink import EnvisalinkClient
-from pyenvisalink.honeywell_envisalinkdefs import *
+from .envisalink_base_client import EnvisalinkClient
+from .honeywell_envisalinkdefs import *
+
 
 _LOGGER = logging.getLogger(__name__)
 

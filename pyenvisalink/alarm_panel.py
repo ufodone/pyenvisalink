@@ -1,7 +1,7 @@
 import logging
-from pyenvisalink import HoneywellClient
-from pyenvisalink import DSCClient
-from pyenvisalink import AlarmState
+from .honeywell_client import HoneywellClient
+from .dsc_client import DSCClient
+from .alarm_state import AlarmState
 
 _LOGGER = logging.getLogger(__name__)
 COMMAND_ERR = "Cannot run this command while disconnected. Please run start() first."
