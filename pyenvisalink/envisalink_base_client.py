@@ -20,18 +20,15 @@ class EnvisalinkClient(asyncio.Protocol):
             RETRY = "retry"
             FAILED = "failed"
 
-        cmd = None
-        data = None
-        code = None
-        state = State.QUEUED
-        retryDelay = 0.1 # Start the retry backoff at 100ms
-        retryTime = 0
-        expiryTime = 0
-
         def __init__(self, cmd, data, code):
             self.cmd = cmd
             self.data = data
             self.code = code
+            self.state = self.State.QUEUED
+            self.retryDelay = 0.1 # Start the retry backoff at 100ms
+            self.retryTime = 0
+            self.expiryTime = 0
+            self.responseEvent = asyncio.Event()
 
 
     def __init__(self, panel, loop):
@@ -51,18 +48,20 @@ class EnvisalinkClient(asyncio.Protocol):
         self._shutdown = False
         self._cachedCode = None
         self._commandTask = None
+        self._readLoopTask = None
+        self._keepAliveTask = None
         self._commandEvent = asyncio.Event()
         self._commandQueue = []
 
     def start(self):
         """Public method for initiating connectivity with the envisalink."""
         self._shutdown = False
-        self._commandTask = self._eventLoop.create_task(self.process_command_queue())
-        self._eventLoop.create_task(self.read_loop())
-        self._eventLoop.create_task(self.keep_alive())
+        self._commandTask = self._eventLoop.create_task(self.process_command_queue(), name="command_processor")
+        self._readLoopTask = self._eventLoop.create_task(self.read_loop(), name="read_loop")
+        self._keepAliveTask = self._eventLoop.create_task(self.keep_alive(), name="keep_alive")
 
         if self._alarmPanel.zone_timer_interval > 0:
-            self._eventLoop.create_task(self.periodic_zone_timer_dump())
+            self._eventLoop.create_task(self.periodic_zone_timer_dump(), name="zone_timer_dump")
 
         if self._ownLoop:
             _LOGGER.info("Starting up our own event loop.")
@@ -97,7 +96,7 @@ class EnvisalinkClient(asyncio.Protocol):
             if self._reader and self._writer:
                 # Connected to EVL; start reading data from the connection
                 try:
-                    while not self._shutdown:
+                    while not self._shutdown and self._reader:
                         _LOGGER.debug("Waiting for data from EVL")
                         data = await self._reader.read(n=256)
                         if not data or len(data) == 0 or self._reader.at_eof():
@@ -161,47 +160,51 @@ class EnvisalinkClient(asyncio.Protocol):
         """Used to send a properly formatted command to the envisalink"""
         raise NotImplementedError()
 
-    def dump_zone_timers(self):
+    async def dump_zone_timers(self):
         """Public method for dumping zone timers."""
         raise NotImplementedError()
 
-    def change_partition(self, partitionNumber):
+    async def change_partition(self, partitionNumber):
         """Public method for changing the default partition."""
         raise NotImplementedError()
 
-    def keypresses_to_default_partition(self, keypresses):
+    async def keypresses_to_default_partition(self, keypresses):
         """Public method for sending a key to a particular partition."""
         self.send_data(keypresses)
 
-    def keypresses_to_partition(self, partitionNumber, keypresses):
+    async def keypresses_to_partition(self, partitionNumber, keypresses):
         """Public method to send a key to the default partition."""
         raise NotImplementedError()
 
-    def arm_stay_partition(self, code, partitionNumber):
+    async def arm_stay_partition(self, code, partitionNumber):
         """Public method to arm/stay a partition."""
         raise NotImplementedError()
 
-    def arm_away_partition(self, code, partitionNumber):
+    async def arm_away_partition(self, code, partitionNumber):
         """Public method to arm/away a partition."""
         raise NotImplementedError()
 
-    def arm_max_partition(self, code, partitionNumber):
+    async def arm_max_partition(self, code, partitionNumber):
         """Public method to arm/max a partition."""
         raise NotImplementedError()
 
-    def disarm_partition(self, code, partitionNumber):
+    async def arm_night_partition(self, code, partitionNumber):
+        """Public method to arm/max a partition."""
+        raise NotImplementedError()
+
+    async def disarm_partition(self, code, partitionNumber):
         """Public method to disarm a partition."""
         raise NotImplementedError()
 
-    def panic_alarm(self, panicType):
+    async def panic_alarm(self, panicType):
         """Public method to trigger the panic alarm."""
         raise NotImplementedError()
 
-    def toggle_zone_bypass(self, zone):
+    async def toggle_zone_bypass(self, zone):
         """Public method to toggle a zone's bypass state."""
         raise NotImplementedError()
 
-    def command_output(self, code, partitionNumber, outputNumber):
+    async def command_output(self, code, partitionNumber, outputNumber):
         """Public method to activate the selected command output"""
         raise NotImplementedError()
 
@@ -323,12 +326,13 @@ class EnvisalinkClient(asyncio.Protocol):
             _LOGGER.debug("(zone %i) %s", zoneNumber, zoneInfo['status'])
 
 
-    def queue_command(self, cmd, data, code = None):
-        _LOGGER.info(str.format("Queueing command '{0}' data: '{1}'", cmd, data))
+    async def queue_command(self, cmd, data, code = None):
+        _LOGGER.debug("Queueing command '%s' data: '%s' ; calling_task=%s", cmd, data, asyncio.current_task().get_name())
         op = self.Operation(cmd, data, code)
         op.expiryTime = time.time() + self._alarmPanel.command_timeout
         self._commandQueue.append(op)
         self._commandEvent.set()
+        await op.responseEvent.wait()
 
     async def process_command_queue(self):
         """Manage processing of commands to be issued to the EVL.  Commands are serialized to the EVL to avoid 
@@ -366,6 +370,7 @@ class EnvisalinkClient(asyncio.Protocol):
                     elif op.state == self.Operation.State.SUCCEEDED:
                         # Remove completed command from head of the queue
                         self._commandQueue.pop(0)
+                        op.responseEvent.set()
                     elif op.state == self.Operation.State.RETRY:
                         if now >= op.retryTime:
                             # Time to re-issue the command
@@ -376,6 +381,7 @@ class EnvisalinkClient(asyncio.Protocol):
                             break
                     elif op.state == self.Operation.State.FAILED:
                         # Command completed; check the queue for more
+                        op.responseEvent.set()
                         self._commandQueue.pop(0)
 
                 # Wait until there is more work to do

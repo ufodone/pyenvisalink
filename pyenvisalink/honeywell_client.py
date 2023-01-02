@@ -25,43 +25,43 @@ class HoneywellClient(EnvisalinkClient):
                 self.dump_zone_timers()
             await asyncio.sleep(self._alarmPanel.zone_timer_interval)
 
-    def send_command(self, code, data):
+    async def send_command(self, code, data):
         """Send a command in the proper honeywell format."""
         to_send = '^' + code + ',' + data + '$'
-        self.send_data(to_send)
+        await self.send_data(to_send)
 
-    def dump_zone_timers(self):
+    async def dump_zone_timers(self):
         """Send a command to dump out the zone timers."""
-        self.send_command(evl_Commands['DumpZoneTimers'], '')
+        await self.send_command(evl_Commands['DumpZoneTimers'], '')
 
-    def keypresses_to_partition(self, partitionNumber, keypresses):
+    async def keypresses_to_partition(self, partitionNumber, keypresses):
         """Send keypresses to a particular partition."""
         for char in keypresses:
-            self.send_command(evl_Commands['PartitionKeypress'], str.format("{0},{1}", partitionNumber, char))
+            await self.send_command(evl_Commands['PartitionKeypress'], str.format("{0},{1}", partitionNumber, char))
 
-    def arm_stay_partition(self, code, partitionNumber):
+    async def arm_stay_partition(self, code, partitionNumber):
         """Public method to arm/stay a partition."""
-        self.keypresses_to_partition(partitionNumber, code + '3')
+        await self.keypresses_to_partition(partitionNumber, code + '3')
 
-    def arm_away_partition(self, code, partitionNumber):
+    async def arm_away_partition(self, code, partitionNumber):
         """Public method to arm/away a partition."""
-        self.keypresses_to_partition(partitionNumber, code + '2')
+        await self.keypresses_to_partition(partitionNumber, code + '2')
 
-    def arm_max_partition(self, code, partitionNumber):
+    async def arm_max_partition(self, code, partitionNumber):
         """Public method to arm/max a partition."""
-        self.keypresses_to_partition(partitionNumber, code + '4')
+        await self.keypresses_to_partition(partitionNumber, code + '4')
 
-    def arm_night_partition(self, code, partitionNumber):
+    async def arm_night_partition(self, code, partitionNumber):
         """Public method to arm/max a partition."""
-        self.keypresses_to_partition(partitionNumber, code + '7')
+        await self.keypresses_to_partition(partitionNumber, code + '7')
 
-    def disarm_partition(self, code, partitionNumber):
+    async def disarm_partition(self, code, partitionNumber):
         """Public method to disarm a partition."""
-        self.keypresses_to_partition(partitionNumber, code + '1')
+        await self.keypresses_to_partition(partitionNumber, code + '1')
 
-    def panic_alarm(self, panicType):
+    async def panic_alarm(self, panicType):
         """Public method to raise a panic alarm."""
-        self.keypresses_to_partition(1, evl_PanicTypes[panicType])
+        await self.keypresses_to_partition(1, evl_PanicTypes[panicType])
 
     def parseHandler(self, rawInput):
         """When the envisalink contacts us- parse out which command and data."""

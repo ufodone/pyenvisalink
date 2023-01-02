@@ -202,88 +202,88 @@ class EnvisalinkAlarmPanel:
         else:
             _LOGGER.error(COMMAND_ERR)
 
-    def dump_zone_timers(self):
+    async def dump_zone_timers(self):
         """Request a zone timer dump from the envisalink."""
         if self._client:
-            self._client.dump_zone_timers()
+            await self._client.dump_zone_timers()
         else:
             _LOGGER.error(COMMAND_ERR)
 
-    def change_partition(self, partitionNumber):
+    async def change_partition(self, partitionNumber):
         """Request that the default partition be changed."""
         if self._client:
-            self._client.change_partition(partitionNumber)
+            await self._client.change_partition(partitionNumber)
         else:
             _LOGGER.error(COMMAND_ERR)
 
-    def keypresses_to_default_partition(self, keypresses):
+    async def keypresses_to_default_partition(self, keypresses):
         """Send a key to the current partition."""
         if self._client:
-            self._client.keypresses_to_default_partition(keypresses)
+            await self._client.keypresses_to_default_partition(keypresses)
         else:
             _LOGGER.error(COMMAND_ERR)
 
-    def keypresses_to_partition(self, partitionNumber, keypresses):
+    async def keypresses_to_partition(self, partitionNumber, keypresses):
         """Send a key to a partition other than the current one."""
         if self._client:
-            self._client.keypresses_to_partition(partitionNumber, keypresses)
+            await self._client.keypresses_to_partition(partitionNumber, keypresses)
         else:
             _LOGGER.error(COMMAND_ERR)
 
-    def arm_stay_partition(self, code, partitionNumber):
+    async def arm_stay_partition(self, code, partitionNumber):
         """Public method to arm/stay a partition."""
         if self._client:
-            self._client.arm_stay_partition(code, partitionNumber)
+            await self._client.arm_stay_partition(code, partitionNumber)
         else:
             _LOGGER.error(COMMAND_ERR)
 
-    def arm_away_partition(self, code, partitionNumber):
+    async def arm_away_partition(self, code, partitionNumber):
         """Public method to arm/away a partition."""
         if self._client:
-            self._client.arm_away_partition(code, partitionNumber)
+            await self._client.arm_away_partition(code, partitionNumber)
         else:
             _LOGGER.error(COMMAND_ERR)
 
-    def arm_max_partition(self, code, partitionNumber):
+    async def arm_max_partition(self, code, partitionNumber):
         """Public method to arm/max a partition."""
         if self._client:
-            self._client.arm_max_partition(code, partitionNumber)
+            await self._client.arm_max_partition(code, partitionNumber)
         else:
             _LOGGER.error(COMMAND_ERR)
 
-    def arm_night_partition(self, code, partitionNumber):
+    async def arm_night_partition(self, code, partitionNumber):
         """Public method to arm/night a partition."""
         if self._client:
-            self._client.arm_night_partition(code, partitionNumber)
+            await self._client.arm_night_partition(code, partitionNumber)
         else:
             _LOGGER.error(COMMAND_ERR)
 
-    def disarm_partition(self, code, partitionNumber):
+    async def disarm_partition(self, code, partitionNumber):
         """Public method to disarm a partition."""
         if self._client:
-            self._client.disarm_partition(code, partitionNumber)
+            await self._client.disarm_partition(code, partitionNumber)
         else:
             _LOGGER.error(COMMAND_ERR)
 
-    def panic_alarm(self, panic_type):
+    async def panic_alarm(self, panic_type):
         """Public method to raise a panic alarm."""
         if self._client:
-            self._client.panic_alarm(panic_type)
+            await self._client.panic_alarm(panic_type)
         else:
             _LOGGER.error(COMMAND_ERR)
 
-    def toggle_zone_bypass(self, zone):
+    async def toggle_zone_bypass(self, zone):
         """Public method to toggle a zone's bypass state."""
         if not self._zoneBypassEnabled:
             _LOGGER.error(COMMAND_ERR)
         elif self._client:
-            self._client.toggle_zone_bypass(zone)
+            await self._client.toggle_zone_bypass(zone)
         else:
             _LOGGER.error(COMMAND_ERR)
 
-    def command_output(self, code, partitionNumber, outputNumber):
+    async def command_output(self, code, partitionNumber, outputNumber):
         """Public method to activate an output"""
         if self._client:
-            self._client.command_output(code, partitionNumber, outputNumber)
+            await self._client.command_output(code, partitionNumber, outputNumber)
         else:
             _LOGGER.error(COMMAND_ERR)

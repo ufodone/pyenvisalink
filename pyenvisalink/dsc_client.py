@@ -31,19 +31,19 @@ class DSCClient(EnvisalinkClient):
         to_send = code + data + self.get_checksum(code, data)
         await self.send_data(to_send)
 
-    def dump_zone_timers(self):
+    async def dump_zone_timers(self):
         """Send a command to dump out the zone timers."""
-        self.queue_command(evl_Commands['DumpZoneTimers'], '')
+        await self.queue_command(evl_Commands['DumpZoneTimers'], '')
 
-    def keypresses_to_partition(self, partitionNumber, keypresses):
+    async def keypresses_to_partition(self, partitionNumber, keypresses):
         """Send keypresses (max of 6) to a particular partition."""
-        self.queue_command(evl_Commands['PartitionKeypress'], str.format("{0}{1}", partitionNumber, keypresses[:6]))
+        await self.queue_command(evl_Commands['PartitionKeypress'], str.format("{0}{1}", partitionNumber, keypresses[:6]))
 
     async def keep_alive(self):
         """Send a keepalive command to reset it's watchdog timer."""
         while not self._shutdown:
             if self._loggedin:
-                self.queue_command(evl_Commands['KeepAlive'], '')
+                await self.queue_command(evl_Commands['KeepAlive'], '')
             await asyncio.sleep(self._alarmPanel.keepalive_interval)
 
     async def periodic_zone_timer_dump(self):
@@ -53,40 +53,40 @@ class DSCClient(EnvisalinkClient):
                 self.dump_zone_timers()
             await asyncio.sleep(self._alarmPanel.zone_timer_interval)
 
-    def arm_stay_partition(self, code, partitionNumber):
+    async def arm_stay_partition(self, code, partitionNumber):
         """Public method to arm/stay a partition."""
         self._cachedCode = code
-        self.queue_command(evl_Commands['ArmStay'], str(partitionNumber))
+        await self.queue_command(evl_Commands['ArmStay'], str(partitionNumber))
 
-    def arm_away_partition(self, code, partitionNumber):
+    async def arm_away_partition(self, code, partitionNumber):
         """Public method to arm/away a partition."""
         self._cachedCode = code
-        self.queue_command(evl_Commands['ArmAway'], str(partitionNumber))
+        await self.queue_command(evl_Commands['ArmAway'], str(partitionNumber))
 
-    def arm_max_partition(self, code, partitionNumber):
+    async def arm_max_partition(self, code, partitionNumber):
         """Public method to arm/max a partition."""
         self._cachedCode = code
-        self.queue_command(evl_Commands['ArmMax'], str(partitionNumber))
+        await self.queue_command(evl_Commands['ArmMax'], str(partitionNumber))
 
-    def arm_night_partition(self, code, partitionNumber):
+    async def arm_night_partition(self, code, partitionNumber):
         """Public method to arm/max a partition."""
-        self.arm_max_partition(code, partitionNumber)
+        await self.arm_max_partition(code, partitionNumber)
 
-    def disarm_partition(self, code, partitionNumber):
+    async def disarm_partition(self, code, partitionNumber):
         """Public method to disarm a partition."""
-        self.queue_command(evl_Commands['Disarm'], str(partitionNumber) + str(code), code)
+        await self.queue_command(evl_Commands['Disarm'], str(partitionNumber) + str(code), code)
 
-    def panic_alarm(self, panicType):
+    async def panic_alarm(self, panicType):
         """Public method to raise a panic alarm."""
-        self.queue_command(evl_Commands['Panic'], evl_PanicTypes[panicType])
+        await self.queue_command(evl_Commands['Panic'], evl_PanicTypes[panicType])
 
-    def toggle_zone_bypass(self, zone):
+    async def toggle_zone_bypass(self, zone):
         """Public method to toggle a zone's bypass state."""
-        self.keypresses_to_partition(1, "*1%02d#" % zone)
+        await self.keypresses_to_partition(1, "*1%02d#" % zone)
 
-    def command_output(self, code, partitionNumber, outputNumber):
+    async def command_output(self, code, partitionNumber, outputNumber):
         """Used to activate the selected command output"""
-        self.queue_command(evl_Commands['CommandOutput'], str.format("{0}{1}", partitionNumber, outputNumber), code)	
+        await self.queue_command(evl_Commands['CommandOutput'], str.format("{0}{1}", partitionNumber, outputNumber), code)	
 
     def parseHandler(self, rawInput):
         """When the envisalink contacts us- parse out which command and data."""
@@ -124,19 +124,26 @@ class DSCClient(EnvisalinkClient):
 
     def handle_login(self, code, data):
         """When the envisalink asks us for our password- send it."""
-        self.queue_command(evl_Commands['Login'], self._alarmPanel.password) 
+        self._eventLoop.create_task(self.queue_login_response(), name="queue_login_response")
+
+    async def queue_login_response(self):
+        await self.queue_command(evl_Commands['Login'], self._alarmPanel.password)
 
 
     def handle_login_success(self, code, data):
         """Handler for when the envisalink accepts our credentials."""
         super().handle_login_success(code, data)
+
+        self._eventLoop.create_task(self.complete_login(), name="complete_login")
+
+    async def complete_login(self):
         dt = datetime.datetime.now().strftime('%H%M%m%d%y')
-        self.queue_command(evl_Commands['SetTime'], dt)
-        self.queue_command(evl_Commands['StatusReport'], '')
+        await self.queue_command(evl_Commands['SetTime'], dt)
+        await self.queue_command(evl_Commands['StatusReport'], '')
 
         if self._alarmPanel._zoneBypassEnabled:
             """ Initiate request for zone bypass information """
-            self.dump_zone_bypass_status()
+            await self.dump_zone_bypass_status()
 
     def handle_command_response(self, code, data):
         """Handle the envisalink's initial response to our commands."""
@@ -202,14 +209,17 @@ class DSCClient(EnvisalinkClient):
 
                 if code == '655' and self._alarmPanel._zoneBypassEnabled:
                     """Partition was disarmed which means the bypassed zones have likley been reset so force a zone bypass refresh"""
-                    self.dump_zone_bypass_status()
+                    self._eventLoop.create_task(self.dump_zone_bypass_status(), name="dump_zone_bypass_status")
 
                 return partitionNumber
             else:
                 _LOGGER.error("Invalid data has been passed in the parition update.")
 
-    async def handle_send_code(self, code, data):
+    def handle_send_code(self, code, data):
         """The DSC will, depending upon settings, challenge us with the code.  If the user passed it in, we'll send it."""
+        self._eventLoop.create_task(self.foo(), name="send_code")
+
+    async def send_code():
         if self._cachedCode is None:
             _LOGGER.error("The envisalink asked for a code, but we have no code in our cache.")
         else:
@@ -259,11 +269,11 @@ class DSCClient(EnvisalinkClient):
         else:
             _LOGGER.error(str.format("Invalid data length ({0}) has been received in the bypass update.", len(data)))
 
-    def dump_zone_bypass_status(self):
+    async def dump_zone_bypass_status(self):
         """ Trigger a 616 'Bypassed Zones Bitfield Dump' to initialize the bypass state.
             There is unfortunately not a specific command to request a zone bypass dump so the *1# keypresses are sent instead.
             It appears that limitations in the envisalink API (or perhaps the panel itself) makes it impossible for this feature
             to work if the alarm panel is setup to require a code to bypass zones. """
-        self.keypresses_to_partition(1, "*1#")
+        await self.keypresses_to_partition(1, "*1#")
 
 
