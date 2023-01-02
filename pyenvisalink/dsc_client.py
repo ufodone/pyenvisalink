@@ -9,8 +9,6 @@ from pyenvisalink.dsc_envisalinkdefs import *
 
 _LOGGER = logging.getLogger(__name__)
 
-from asyncio import ensure_future
-
 class DSCClient(EnvisalinkClient):
     """Represents a dsc alarm client."""
 

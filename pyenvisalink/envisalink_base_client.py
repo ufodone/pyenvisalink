@@ -9,8 +9,6 @@ from pyenvisalink import AlarmState
 
 _LOGGER = logging.getLogger(__name__)
 
-from asyncio import ensure_future
-
 class EnvisalinkClient(asyncio.Protocol):
     """Abstract base class for the envisalink TPI client."""
 
@@ -27,6 +25,7 @@ class EnvisalinkClient(asyncio.Protocol):
         code = None
         state = State.QUEUED
         retryDelay = 0.1 # Start the retry backoff at 100ms
+        retryTime = 0
         expiryTime = 0
 
         def __init__(self, cmd, data, code):
@@ -59,11 +58,11 @@ class EnvisalinkClient(asyncio.Protocol):
         """Public method for initiating connectivity with the envisalink."""
         self._shutdown = False
         self._commandTask = self._eventLoop.create_task(self.process_command_queue())
-        ensure_future(self.connect(), loop=self._eventLoop)
-        ensure_future(self.keep_alive(), loop=self._eventLoop)
+        self._eventLoop.create_task(self.connect())
+        self._eventLoop.create_task(self.keep_alive())
 
         if self._alarmPanel.zone_timer_interval > 0:
-            ensure_future(self.periodic_zone_timer_dump(), loop=self._eventLoop)
+            self._eventLoop.create_task(self.periodic_zone_timer_dump())
 
         if self._ownLoop:
             _LOGGER.info("Starting up our own event loop.")
@@ -112,7 +111,7 @@ class EnvisalinkClient(asyncio.Protocol):
         if self._reconnect_task is not None:
             _LOGGER.debug('Reconnect already scheduled.')
         else:
-            self._reconnect_task = ensure_future(self.reconnect(30), loop=self._eventLoop)
+            self._reconnect_task = self._eventLoop.create_task(self.reconnect(30))
 
     async def reconnect(self, delay):
         """Internal method for reconnecting."""
@@ -340,8 +339,13 @@ class EnvisalinkClient(asyncio.Protocol):
                 _LOGGER.debug(f"Checking command queue: len={len(self._commandQueue)}")
                 now = time.time()
                 op = None
+
+                # Default timeout to ensure we wake up periodically.
+                timeout = self._alarmPanel.command_timeout
+
                 while self._commandQueue:
                     op = self._commandQueue[0]
+                    timeout = op.expiryTime - now
 
                     if op.state == self.Operation.State.SENT:
                         # Still waiting on a response from the EVL so break out of loop and wait for the response
@@ -359,11 +363,12 @@ class EnvisalinkClient(asyncio.Protocol):
                         # Remove completed command from head of the queue
                         self._commandQueue.pop(0)
                     elif op.state == self.Operation.State.RETRY:
-                        if now >= op.expiryTime:
+                        if now >= op.retryTime:
                             # Time to re-issue the command
                             op.state = self.Operation.State.QUEUED
                         else:
                             # Not time to re-issue yet so go back to sleep
+                            timeout = op.retryTime - now
                             break
                     elif op.state == self.Operation.State.FAILED:
                         # Command completed; check the queue for more
@@ -371,13 +376,6 @@ class EnvisalinkClient(asyncio.Protocol):
 
                 # Wait until there is more work to do
                 try:
-                    if op:
-                        timeout = op.expiryTime - now
-                    else:
-                        # No specific timeout required based on command processing but still make sure we wake up
-                        # periodically as a safe-guard.
-                        timeout = self._alarmPanel.command_timeout
-
                     self._commandEvent.clear()
                     _LOGGER.debug(f"Command processor sleeping for {timeout}s.")
                     await asyncio.wait_for(self._commandEvent.wait(), timeout=timeout)
@@ -428,7 +426,7 @@ class EnvisalinkClient(asyncio.Protocol):
                 else:
                     # Tag the command to be retried in the future by the command processor task
                     op.state = self.Operation.State.RETRY
-                    op.expiryTime = time.time() + op.retryDelay
+                    op.retryTime = time.time() + op.retryDelay
                     _LOGGER.warn(f"Command '{op.cmd} {op.data}' failed; retry in {op.retryDelay} seconds.")
         else:
             _LOGGER.error("Command/system error received when no command is active.")
