@@ -50,7 +50,7 @@ class DSCClient(EnvisalinkClient):
         """Used to periodically get the zone timers to make sure our zones are updated."""
         while not self._shutdown:
             if self._loggedin:
-                self.dump_zone_timers()
+                await self.dump_zone_timers()
             await asyncio.sleep(self._alarmPanel.zone_timer_interval)
 
     async def arm_stay_partition(self, code, partitionNumber):
@@ -124,7 +124,7 @@ class DSCClient(EnvisalinkClient):
 
     def handle_login(self, code, data):
         """When the envisalink asks us for our password- send it."""
-        self._eventLoop.create_task(self.queue_login_response(), name="queue_login_response")
+        self.create_internal_task(self.queue_login_response(), name="queue_login_response")
 
     async def queue_login_response(self):
         await self.queue_command(evl_Commands['Login'], self._alarmPanel.password)
@@ -134,7 +134,7 @@ class DSCClient(EnvisalinkClient):
         """Handler for when the envisalink accepts our credentials."""
         super().handle_login_success(code, data)
 
-        self._eventLoop.create_task(self.complete_login(), name="complete_login")
+        self.create_internal_task(self.complete_login(), name="complete_login")
 
     async def complete_login(self):
         dt = datetime.datetime.now().strftime('%H%M%m%d%y')
@@ -209,7 +209,7 @@ class DSCClient(EnvisalinkClient):
 
                 if code == '655' and self._alarmPanel._zoneBypassEnabled:
                     """Partition was disarmed which means the bypassed zones have likley been reset so force a zone bypass refresh"""
-                    self._eventLoop.create_task(self.dump_zone_bypass_status(), name="dump_zone_bypass_status")
+                    self.create_internal_task(self.dump_zone_bypass_status(), name="dump_zone_bypass_status")
 
                 return partitionNumber
             else:
@@ -217,7 +217,7 @@ class DSCClient(EnvisalinkClient):
 
     def handle_send_code(self, code, data):
         """The DSC will, depending upon settings, challenge us with the code.  If the user passed it in, we'll send it."""
-        self._eventLoop.create_task(self.foo(), name="send_code")
+        self.create_internal_task(self.foo(), name="send_code")
 
     async def send_code():
         if self._cachedCode is None:
@@ -251,7 +251,7 @@ class DSCClient(EnvisalinkClient):
             return
 
         if len(data) == 16:
-            updates = {}
+            updates = []
             for byte in range(8):
                 bypassBitfield = int('0x' + data[byte * 2] + data[(byte * 2) + 1], 0)
 
@@ -259,7 +259,7 @@ class DSCClient(EnvisalinkClient):
                     zoneNumber = (byte * 8) + bit + 1
                     bypassed = (bypassBitfield & (1 << bit) != 0)
                     if self._alarmPanel.alarm_state['zone'][zoneNumber]['bypassed'] != bypassed:
-                        updates[zoneNumber] = bypassed
+                        updates.append(zoneNumber)
                     self._alarmPanel.alarm_state['zone'][zoneNumber]['bypassed'] = bypassed
                     _LOGGER.debug(str.format("(zone {0}) bypass state has updated: {1}", zoneNumber, bypassed))
 

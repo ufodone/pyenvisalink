@@ -4,6 +4,7 @@ import threading
 import time
 import logging
 import re
+import aiohttp
 from enum import Enum
 from .alarm_state import AlarmState
 
@@ -52,16 +53,25 @@ class EnvisalinkClient(asyncio.Protocol):
         self._keepAliveTask = None
         self._commandEvent = asyncio.Event()
         self._commandQueue = []
+        self._activeTasks = set()
+
+    def create_internal_task(self, coro, name=None):
+        task = self._eventLoop.create_task(coro, name=name)
+        task.add_done_callback(self.complete_internal_task)
+        self._activeTasks.add(task)
+
+    def complete_internal_task(self, task):
+        self._activeTasks.remove(task)
 
     def start(self):
         """Public method for initiating connectivity with the envisalink."""
         self._shutdown = False
-        self._commandTask = self._eventLoop.create_task(self.process_command_queue(), name="command_processor")
-        self._readLoopTask = self._eventLoop.create_task(self.read_loop(), name="read_loop")
-        self._keepAliveTask = self._eventLoop.create_task(self.keep_alive(), name="keep_alive")
+        self._commandTask = self.create_internal_task(self.process_command_queue(), name="command_processor")
+        self._readLoopTask = self.create_internal_task(self.read_loop(), name="read_loop")
+        self._keepAliveTask = self.create_internal_task(self.keep_alive(), name="keep_alive")
 
         if self._alarmPanel.zone_timer_interval > 0:
-            self._eventLoop.create_task(self.periodic_zone_timer_dump(), name="zone_timer_dump")
+            self.create_internal_task(self.periodic_zone_timer_dump(), name="zone_timer_dump")
 
         if self._ownLoop:
             _LOGGER.info("Starting up our own event loop.")
@@ -69,13 +79,19 @@ class EnvisalinkClient(asyncio.Protocol):
             self._eventLoop.close()
             _LOGGER.info("Connection shut down.")
 
-    def stop(self):
+    async def stop(self):
         """Public method for shutting down connectivity with the envisalink."""
         self._loggedin = False
         self._shutdown = True
 
         # Wake up the command processor task to allow it to exit
         self._commandEvent.set()
+        
+        # Cancel all tasks
+        for t in self._activeTasks:
+            t.cancel()
+
+        await self.disconnect()
 
         if self._ownLoop:
             _LOGGER.info("Shutting down Envisalink client connection...")
@@ -101,18 +117,20 @@ class EnvisalinkClient(asyncio.Protocol):
                         data = await self._reader.read(n=256)
                         if not data or len(data) == 0 or self._reader.at_eof():
                             _LOGGER.error('The server closed the connection.')
-                            self.disconnect()
+                            await self.disconnect()
                             break
                         self.process_data(data)
                 except Exception as ex:
                     _LOGGER.error("Caught unexpected exception: %r", ex)
-                    self.disconnect()
+                    await self.disconnect()
 
             # Lost connection so reattempt connection in a bit
             if not self._shutdown:
                 reconnect_time = 30
                 _LOGGER.error("Reconnection attempt in %ds", reconnect_time)
                 await asyncio.sleep(reconnect_time)
+
+        await self.disconnect()
 
 
     async def keep_alive(self):
@@ -134,14 +152,15 @@ class EnvisalinkClient(asyncio.Protocol):
             if not self._shutdown:
                 _LOGGER.error('Unable to connect to envisalink: %r', ex)
                 self._alarmPanel._loginTimeoutCallback(False)
-            self.disconnect()
+            await self.disconnect()
 
-    def disconnect(self):
+    async def disconnect(self):
         """Internal method for forcing connection closure if hung."""
         _LOGGER.debug('Cleaning up from disconnection with server.')
         self._loggedin = False
         if self._writer:
             self._writer.close()
+            await self._writer.wait_closed()
             self._writer = None
         if self._reader:
             self._reader = None
@@ -154,7 +173,7 @@ class EnvisalinkClient(asyncio.Protocol):
             await self._writer.drain()
         except Exception as err:
             _LOGGER.error('Failed to write to the stream: %r', err)
-            self.disconnect()
+            await self.disconnect()
 
     async def send_command(self, code, data):
         """Used to send a properly formatted command to the envisalink"""
@@ -319,11 +338,20 @@ class EnvisalinkClient(asyncio.Protocol):
 
     def handle_zone_timer_dump(self, code, data):
         """Handle the zone timer data."""
+        results = []
         zoneInfoArray = self.convertZoneDump(data)
         for zoneNumber, zoneInfo in enumerate(zoneInfoArray, start=1):
-            self._alarmPanel.alarm_state['zone'][zoneNumber]['status'].update({'open': zoneInfo['status'] == 'open', 'fault': zoneInfo['status'] == 'open'})
+            currentStatus = self._alarmPanel.alarm_state['zone'][zoneNumber]['status']
+            newOpen = zoneInfo['status'] == 'open'
+            newFault = zoneInfo['status'] == 'open'
+            if newOpen != currentStatus['open'] or newFault != currentStatus['fault']:
+                # State changed so add to result list
+                results.append(zoneNumber)
+
+            self._alarmPanel.alarm_state['zone'][zoneNumber]['status'].update({'open': newOpen, 'fault': newFault})
             self._alarmPanel.alarm_state['zone'][zoneNumber]['last_fault'] = zoneInfo['seconds']
             _LOGGER.debug("(zone %i) %s", zoneNumber, zoneInfo['status'])
+        return results
 
 
     async def queue_command(self, cmd, data, code = None):
@@ -443,4 +471,5 @@ class EnvisalinkClient(asyncio.Protocol):
 
         # Wake up the command processing task to process this result
         self._commandEvent.set()
+
 

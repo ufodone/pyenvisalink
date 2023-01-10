@@ -1,4 +1,7 @@
+import aiohttp
 import logging
+import re
+from enum import Enum
 from .honeywell_client import HoneywellClient
 from .dsc_client import DSCClient
 from .alarm_state import AlarmState
@@ -8,12 +11,19 @@ COMMAND_ERR = "Cannot run this command while disconnected. Please run start() fi
 
 class EnvisalinkAlarmPanel:
     """This class represents an envisalink-based alarm panel."""
+    class ConnectionResult(Enum):
+        SUCCESS = "success"
+        INVALID_AUTHORIZATION = "invalid_authorization"
+        CONNECTION_FAILED = "connection_failed"
+        INVALID_PANEL_TYPE = "invalid_panel_type"
         
     def __init__(self, host, port=4025, panelType='HONEYWELL',
                  envisalinkVersion=3, userName='user', password='user',
                  zoneTimerInterval=20, keepAliveInterval=30, eventLoop=None,
                  connectionTimeout=10, zoneBypassEnabled=False,
                  commandTimeout=5.0):
+        self._macAddress = None
+        self._firmwareVersion = None
         self._host = host
         self._port = port
         self._connectionTimeout = connectionTimeout
@@ -93,6 +103,14 @@ class EnvisalinkAlarmPanel:
     @property
     def alarm_state(self):
         return self._alarmState
+
+    @property
+    def firmware_version(self):
+        return self._firmwareVersion
+
+    @property
+    def mac_address(self):
+        return self._macAddress
 
     @property
     def callback_login(self):
@@ -182,7 +200,14 @@ class EnvisalinkAlarmPanel:
         """This is the callback that occurs when the client doesn't subscribe."""
         _LOGGER.debug("Callback has not been set by client.")	    
 
-    def start(self):
+    async def start(self):
+
+        # Validate the connection first if it hasn't been done already
+        if not self._firmwareVersion and not self._macAddress:
+            result = await self.validate_device_connection()
+            if result != self.ConnectionResult.SUCCESS:
+                return result
+
         """Connect to the envisalink, and listen for events to occur."""
         logging.info(str.format("Connecting to envisalink on host: {0}, port: {1}", self._host, self._port))
         if self._panelType == 'HONEYWELL':
@@ -192,13 +217,16 @@ class EnvisalinkAlarmPanel:
             self._client = DSCClient(self, self._eventLoop)
             self._client.start()
         else:
-            _LOGGER.error("Unexpected panel type.")    
+            _LOGGER.error("Unexpected panel type: %s", self._panelType)    
+            return self.ConnectionResult.INVALID_PANEL_TYPE
+
+        return self.ConnectionResult.SUCCESS
         
-    def stop(self):
+    async def stop(self):
         """Shut down and close our connection to the envisalink."""
         if self._client:
             _LOGGER.info("Disconnecting from the envisalink...")
-            self._client.stop()
+            await self._client.stop()
         else:
             _LOGGER.error(COMMAND_ERR)
 
@@ -287,3 +315,47 @@ class EnvisalinkAlarmPanel:
             await self._client.command_output(code, partitionNumber, outputNumber)
         else:
             _LOGGER.error(COMMAND_ERR)
+
+    async def validate_device_connection(self) -> ConnectionResult:
+        self._macAddress = None
+        self._firmwareVersion = None
+
+        try:
+            async with aiohttp.ClientSession(auth=aiohttp.BasicAuth(self._username, self._password)) as client:
+                url = f'http://{self._host}:8080/3'
+                resp = await client.get(url)
+                if resp.status == 401:
+                    _LOGGER.error("Unable to validate connection: invalid authorization.")
+                    return self.ConnectionResult.INVALID_AUTHORIZATION
+                elif resp.status == 404:
+                    # Connection was successful but unable to extract FW and MAC info
+                    _LOGGER.warn("Connection successful but unable to fetch FW/MAC: 404 (page not found): '%s'", url)
+                    return self.ConnectionResult.SUCCESS
+                elif resp.status != 200:
+                    # Connection was successful but unable to extract FW and MAC info
+                    _LOGGER.warn("Connection successful but unable to fetch FW/MAC: '%s'", resp.status)
+                    return self.ConnectionResult.SUCCESS
+
+                # Attempt to extract the firmware version and MAC address from the returned HTML
+                html = await resp.text()
+                fw_regex = 'Firmware Version: ([^ ]*)'
+                mac_regex = 'MAC: ([0-9a-fA-F]*)'
+
+                m = re.search(fw_regex, html)
+                if m.lastindex != 1:
+                    _LOGGER.warn(f"# Unable to extract Firmware version")
+                else:
+                    self._firmwareVersion = m.group(1)
+
+                m = re.search(mac_regex, html)
+                if m.lastindex != 1:
+                    _LOGGER.warn(f"# Unable to extract MAC address")
+                else:
+                    self._macAddress = m.group(1)
+        except Exception as ex:
+            _LOGGER.error("Unable to validate connection: %s", ex)
+            return self.ConnectionResult.CONNECTION_FAILED
+
+        _LOGGER.info(f"Firmware Version: '{self._firmwareVersion}' / MAC address: '{self._macAddress}'")
+        return self.ConnectionResult.SUCCESS
+
