@@ -24,11 +24,13 @@ class EnvisalinkAlarmPanel:
                  userName='user', password='user',
                  zoneTimerInterval=20, keepAliveInterval=30, eventLoop=None,
                  connectionTimeout=10, zoneBypassEnabled=False,
-                 commandTimeout=5.0):
+                 commandTimeout=5.0,
+                 httpPort=80):
         self._macAddress = None
         self._firmwareVersion = None
         self._host = host
         self._port = port
+        self._httpPort = httpPort
         self._connectionTimeout = connectionTimeout
         self._panelType = None
         self._evlVersion = None
@@ -111,6 +113,14 @@ class EnvisalinkAlarmPanel:
     @property
     def mac_address(self):
         return self._macAddress
+
+    @property
+    def max_zones(self):
+        return self._maxZones
+
+    @property
+    def max_partitions(self):
+        return self._maxPartitions
 
     @property
     def callback_login(self):
@@ -212,6 +222,10 @@ class EnvisalinkAlarmPanel:
             logging.error("Panel type could not be determined.")
             return self.ConnectionResult.INVALID_PANEL_TYPE
 
+        if self._evlVersion is None:
+            logging.error("EVL version could not be determined; defaulting to 3")
+            self._evlVersion = 3
+
         if self._evlVersion < 4:
             self._maxZones = 64
         else:
@@ -227,7 +241,7 @@ class EnvisalinkAlarmPanel:
             self._client = DSCClient(self, self._eventLoop)
             self._client.start()
         else:
-            _LOGGER.error("Unexpected panel type: %s", self._panelType)    
+            _LOGGER.error("Unexpected panel type: '%s'", self._panelType)
             return self.ConnectionResult.INVALID_PANEL_TYPE
 
         return self.ConnectionResult.SUCCESS
@@ -289,10 +303,10 @@ class EnvisalinkAlarmPanel:
         else:
             _LOGGER.error(COMMAND_ERR)
 
-    async def arm_night_partition(self, code, partitionNumber):
+    async def arm_night_partition(self, code, partitionNumber, mode=None):
         """Public method to arm/night a partition."""
         if self._client:
-            await self._client.arm_night_partition(code, partitionNumber)
+            await self._client.arm_night_partition(code, partitionNumber, mode)
         else:
             _LOGGER.error(COMMAND_ERR)
 
@@ -332,7 +346,7 @@ class EnvisalinkAlarmPanel:
 
         try:
             async with aiohttp.ClientSession(auth=aiohttp.BasicAuth(self._username, self._password)) as client:
-                url = f'http://{self._host}/2'
+                url = f'http://{self._host}:{self._httpPort}/2'
                 resp = await client.get(url)
                 if resp.status != 200:
                     _LOGGER.warn("Unable to discover Envisalink version and patel type: '%s'", resp.status)
@@ -344,11 +358,11 @@ class EnvisalinkAlarmPanel:
 
                 m = re.search(version_regex, html)
                 if m is None or m.lastindex != 1:
-                    _LOGGER.warn("Unable to determine verrsion: raw HTML: %s", html)
+                    _LOGGER.warn("Unable to determine version: raw HTML: %s", html)
                 else:
                     self._evlVersion = int(m.group(1))
 
-                panel_regex = '>Security Subsystem - ([^<]*)'
+                panel_regex = '>Security Subsystem - ([^<]*)<'
                 m = re.search(panel_regex, html)
                 if m is None or m.lastindex != 1:
                     _LOGGER.warn("Unable to determine panel type: raw HTML: %s", html)
@@ -360,7 +374,7 @@ class EnvisalinkAlarmPanel:
             _LOGGER.error("Unable to validate connection: %s", ex)
             return self.ConnectionResult.CONNECTION_FAILED
 
-        _LOGGER.info(f"Discovered Envisalink %d: %s", self._evlVersion, self._panelType)
+        _LOGGER.info(f"Discovered Envisalink %s: %s", self._evlVersion, self._panelType)
         return True
         
     async def validate_device_connection(self) -> ConnectionResult:
@@ -369,7 +383,7 @@ class EnvisalinkAlarmPanel:
 
         try:
             async with aiohttp.ClientSession(auth=aiohttp.BasicAuth(self._username, self._password)) as client:
-                url = f'http://{self._host}/3'
+                url = f'http://{self._host}:{self._httpPort}/3'
                 resp = await client.get(url)
                 if resp.status == 401:
                     _LOGGER.error("Unable to validate connection: invalid authorization.")
