@@ -112,21 +112,36 @@ class EnvisalinkClient(asyncio.Protocol):
             if self._reader and self._writer:
                 # Connected to EVL; start reading data from the connection
                 try:
+                    unprocessed_data = None
                     while not self._shutdown and self._reader:
                         _LOGGER.debug("Waiting for data from EVL")
-                        data = await self._reader.read(n=256)
+                        try:
+                            data = await asyncio.wait_for(self._reader.read(n=256), 5)
+                        except asyncio.exceptions.TimeoutError:
+                            continue
+
                         if not data or len(data) == 0 or self._reader.at_eof():
                             _LOGGER.error('The server closed the connection.')
                             await self.disconnect()
                             break
-                        self.process_data(data)
+
+                        data = data.decode('ascii')
+                        _LOGGER.debug('{---------------------------------------')
+                        _LOGGER.debug(str.format('RX < {0}', data))
+
+                        if unprocessed_data:
+                            data = unprocessed_data + data
+
+                        unprocessed_data = self.process_data(data)
+                        _LOGGER.debug('}---------------------------------------')
                 except Exception as ex:
                     _LOGGER.error("Caught unexpected exception: %r", ex)
                     await self.disconnect()
 
             # Lost connection so reattempt connection in a bit
             if not self._shutdown:
-                reconnect_time = 30
+                # TODO: implement exponential backoff 
+                reconnect_time = 10
                 _LOGGER.error("Reconnection attempt in %ds", reconnect_time)
                 await asyncio.sleep(reconnect_time)
 
@@ -157,13 +172,23 @@ class EnvisalinkClient(asyncio.Protocol):
     async def disconnect(self):
         """Internal method for forcing connection closure if hung."""
         _LOGGER.debug('Cleaning up from disconnection with server.')
+
         self._loggedin = False
+
+        # Fail all outstanding commands
+        for op in self._commandQueue:
+            op.state = self.Operation.State.FAILED
+
+        # Tear down the connection
         if self._writer:
-            self._writer.close()
-            await self._writer.wait_closed()
-            self._writer = None
-        if self._reader:
-            self._reader = None
+            try:
+                self._writer.close()
+                await self._writer.wait_closed()
+            except Exception as ex:
+                _LOGGER.error("Exception while closing connection: %s", ex)
+
+        self._writer = None
+        self._reader = None
             
     async def send_data(self, data):
         """Raw data send- just make sure it's encoded properly and logged."""
@@ -231,41 +256,34 @@ class EnvisalinkClient(asyncio.Protocol):
         """When the envisalink contacts us- parse out which command and data."""
         raise NotImplementedError()
         
-    def process_data(self, data):
-        """asyncio callback for any data recieved from the envisalink."""
-        if data != '':
+    def process_data(self, data) -> str:
+        while data is not None and len(data) > 0:
+            cmd, data = self.parseHandler(data)
+
+            if not cmd:
+                break
+
             try:
-                fullData = data.decode('ascii').strip()
-                cmd = {}
-                result = ''
-                _LOGGER.debug('----------------------------------------')
-                _LOGGER.debug(str.format('RX < {0}', fullData))
-                lines = str.split(fullData, '\r\n')
-            except:
-                _LOGGER.error('Received invalid message. Skipping.')
-                return
+                _LOGGER.debug(str.format('calling handler: {0} for code: {1} with data: {2}', cmd['handler'], cmd['code'], cmd['data']))
+                handlerFunc = getattr(self, cmd['handler'])
+                result = handlerFunc(cmd['code'], cmd['data'])
 
-            for line in lines:
-                cmd = self.parseHandler(line)
-            
-                try:
-                    _LOGGER.debug(str.format('calling handler: {0} for code: {1} with data: {2}', cmd['handler'], cmd['code'], cmd['data']))
-                    handlerFunc = getattr(self, cmd['handler'])
-                    result = handlerFunc(cmd['code'], cmd['data'])
-    
-                except (AttributeError, TypeError, KeyError) as err:
-                    _LOGGER.debug("No handler configured for evl command.")
-                    _LOGGER.debug(str.format("KeyError: {0}", err))
-            
-                try:
-                    _LOGGER.debug(str.format('Invoking callback: {0}', cmd['callback']))
-                    callbackFunc = getattr(self._alarmPanel, cmd['callback'])
-                    callbackFunc(result)
-    
-                except (AttributeError, TypeError, KeyError) as err:
-                    _LOGGER.debug("No callback configured for evl command.")
+            except (AttributeError, TypeError, KeyError) as err:
+                _LOGGER.debug("No handler configured for evl command.")
+                _LOGGER.debug(str.format("KeyError: {0}", err))
 
-                _LOGGER.debug('----------------------------------------')
+            try:
+                _LOGGER.debug(str.format('Invoking callback: {0}', cmd['callback']))
+                callbackFunc = getattr(self._alarmPanel, cmd['callback'])
+                callbackFunc(result)
+
+            except (AttributeError, TypeError, KeyError) as err:
+                _LOGGER.debug("No callback configured for evl command.")
+
+        # Return any unprocessed data (uncomplete command)
+        if not data or len(data) == 0:
+            return None
+        return data
 
     def convertZoneDump(self, theString):
         """Interpret the zone dump result, and convert to readable times."""
@@ -361,6 +379,7 @@ class EnvisalinkClient(asyncio.Protocol):
         self._commandQueue.append(op)
         self._commandEvent.set()
         await op.responseEvent.wait()
+        return op.state == op.State.SUCCEEDED
 
     async def process_command_queue(self):
         """Manage processing of commands to be issued to the EVL.  Commands are serialized to the EVL to avoid 
@@ -386,9 +405,12 @@ class EnvisalinkClient(asyncio.Protocol):
                     if op.state == self.Operation.State.SENT:
                         # Still waiting on a response from the EVL so break out of loop and wait for the response
                         if now >= op.expiryTime:
-                            # Timeout waiting for response from the EVL so fail the command
+                            # Timeout waiting for response from the EVL so fail the command,
+                            # This is likely due to the EVL becoming unresponsive so tear down the
+                            # connection to start a recovery.
                             _LOGGER.error(f"Command '{op.cmd}' failed due to timeout waiting for response from EVL")
                             op.state = self.Operation.State.FAILED
+                            await self.disconnect()
                         break
                     elif op.state == self.Operation.State.QUEUED:
                         # Send command to the EVL
@@ -397,7 +419,7 @@ class EnvisalinkClient(asyncio.Protocol):
                         try:
                             await self.send_command(op.cmd, op.data)
                         except Exception as ex:
-                            _LOGGER.error(f"Unexpected exception trying to sent command: {ex}")
+                            _LOGGER.error(f"Unexpected exception trying to send command: {ex}")
                             op.state = self.Operation.State.FAILED
                     elif op.state == self.Operation.State.SUCCEEDED:
                         # Remove completed command from head of the queue

@@ -15,14 +15,14 @@ class HoneywellClient(EnvisalinkClient):
         """Send a keepalive command to reset it's watchdog timer."""
         while not self._shutdown:
             if self._loggedin:
-                self.send_command(evl_Commands['KeepAlive'], '')
+                await self.queue_command(evl_Commands['KeepAlive'], '')
             await asyncio.sleep(self._alarmPanel.keepalive_interval)
 
     async def periodic_zone_timer_dump(self):
         """Used to periodically get the zone timers to make sure our zones are updated."""
         while not self._shutdown:
             if self._loggedin:
-                self.dump_zone_timers()
+                await self.dump_zone_timers()
             await asyncio.sleep(self._alarmPanel.zone_timer_interval)
 
     async def send_command(self, code, data):
@@ -32,12 +32,14 @@ class HoneywellClient(EnvisalinkClient):
 
     async def dump_zone_timers(self):
         """Send a command to dump out the zone timers."""
-        await self.send_command(evl_Commands['DumpZoneTimers'], '')
+        await self.queue_command(evl_Commands['DumpZoneTimers'], '')
 
     async def keypresses_to_partition(self, partitionNumber, keypresses):
         """Send keypresses to a particular partition."""
         for char in keypresses:
-            await self.send_command(evl_Commands['PartitionKeypress'], str.format("{0},{1}", partitionNumber, char))
+            result = await self.queue_command(evl_Commands['PartitionKeypress'], str.format("{0},{1}", partitionNumber, char))
+            if not result:
+                break
 
     async def arm_stay_partition(self, code, partitionNumber):
         """Public method to arm/stay a partition."""
@@ -69,36 +71,79 @@ class HoneywellClient(EnvisalinkClient):
     def parseHandler(self, rawInput):
         """When the envisalink contacts us- parse out which command and data."""
         cmd = {}
-        _LOGGER.debug(str.format("Data received:{0}", rawInput))
 
-        parse = re.match('([%\^].+)\$', rawInput)
-        if parse and parse.group(1):
-            # keep first sentinel char to tell difference between tpi and
-            # Envisalink command responses.  Drop the trailing $ sentinel.
-            inputList = parse.group(1).split(',')
-            code = inputList[0]
-            cmd['code'] = code
-            cmd['data'] = ','.join(inputList[1:])
-            _LOGGER.debug(str.format("Code:{0} Data:{1}", code, cmd['data']))
-        elif not self._loggedin:
-            # assume it is login info
-            code = rawInput
+        if not self._loggedin:
+            # assume it is login info but look for a sentinel first in case there is other info here
+            m = re.match(r'[^\r\n%\^]+', rawInput)
+            if m is None:
+                # Don't have the full login response yet
+                return (None, None)
+            code = m.group(0)
+            rawInput = rawInput[m.end(0):]
             cmd['code'] = code
             cmd['data'] = ''
         else:
-            _LOGGER.error("Unrecognized data recieved from the envisalink. Ignoring.")    
-            return None
+            rawInput = re.sub("[\r\n]", "", rawInput)
+
+            # Nothing left to process after stripping the line breaks
+            if not rawInput:
+                return (None, None)
+
+            # Look for a sentinel
+            m = re.match("[%\^]", rawInput)
+            if m is None:
+                # No sentinels so ignore the data
+                _LOGGER.error("Unrecognized data received from the envisalink. Ignoring: '%s'", rawInput)
+                return (None, None)
+
+            start_idx = m.start(0)
+            if start_idx != 0:
+                # Ignore characters up to the sentinel
+                rawInput = rawInput[start_idx:]
+
+            # There's a command here; find the end of it
+            end_idx = rawInput.find("$")
+            if end_idx == -1:
+                # We don't have the full command yet
+                if len(rawInput) == 0:
+                    rawInput = None
+                return (None, rawInput)
+
+            # A full command is present
+
+            # keep first sentinel char to tell difference between tpi and
+            # Envisalink command responses.  Drop the trailing $ sentinel.
+            inputList = rawInput[start_idx:end_idx]
+            cmd_sep_idx = inputList.find(',')
+            if cmd_sep_idx == -1:
+                code = inputList
+                cmd['code'] = code
+                cmd['data'] = ''
+            else:
+                code = inputList[0:cmd_sep_idx]
+                cmd['code'] = code
+                cmd['data'] = inputList[cmd_sep_idx+1:]
+
+            rawInput = rawInput[end_idx+1:]
+
+            _LOGGER.debug(str.format("Code:{0} Data:'{1}'", cmd['code'], cmd['data']))
+
         try:
             cmd['handler'] = "handle_%s" % evl_ResponseTypes[code]['handler']
             cmd['callback'] = "callback_%s" % evl_ResponseTypes[code]['handler']
         except KeyError:
             _LOGGER.warning(str.format('No handler defined in config for {0}, skipping...', code))
-                
-        return cmd
+
+        if rawInput and len(rawInput) == 0:
+            rawInput = None
+        return (cmd, rawInput)
 
     def handle_login(self, code, data):
         """When the envisalink asks us for our password- send it."""
-        self.send_data(self._alarmPanel.password) 
+        self.create_internal_task(self.queue_login_response(), name="queue_login_response")
+
+    async def queue_login_response(self):
+        await self.send_data(self._alarmPanel.password)
         
     def handle_command_response(self, code, data):
         """Handle the envisalink's initial response to our commands."""
@@ -106,7 +151,7 @@ class HoneywellClient(EnvisalinkClient):
             responseInfo = evl_TPI_Response_Codes[data]
             _LOGGER.debug("Envisalink response: " + responseInfo["msg"])
             if data == '00':
-                self.command_succeeded(code)
+                self.command_succeeded(code[1:])
             else:
                 _LOGGER.error("error sending command to envisalink.  Response was: " + responseInfo["msg"])
                 self.command_failed(retry=errorInfo['retry'])
