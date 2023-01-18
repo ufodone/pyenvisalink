@@ -198,7 +198,14 @@ class EnvisalinkClient(asyncio.Protocol):
             
     async def send_data(self, data):
         """Raw data send- just make sure it's encoded properly and logged."""
-        _LOGGER.debug(str.format('TX > {0}', data.encode('ascii')))
+        if _LOGGER.isEnabledFor(logging.DEBUG):
+            if not self._loggedin:
+                # Remove the password from the log entry
+                logData = data.replace(self._alarmPanel.password, "*" * len(self._alarmPanel.password))
+            else:
+                logData = data
+            _LOGGER.debug('TX > %s', logData.encode('ascii'))
+
         try:
             await self.delay_write_if_needed()
 
