@@ -199,11 +199,8 @@ class EnvisalinkClient(asyncio.Protocol):
     async def send_data(self, data):
         """Raw data send- just make sure it's encoded properly and logged."""
         if _LOGGER.isEnabledFor(logging.DEBUG):
-            if not self._loggedin:
-                # Remove the password from the log entry
-                logData = data.replace(self._alarmPanel.password, "*" * len(self._alarmPanel.password))
-            else:
-                logData = data
+            # Scrub the password and alarm code if necessary
+            logData = self.scrub_sensitive_data(data)
             _LOGGER.debug('TX > %s', logData.encode('ascii'))
 
         try:
@@ -388,7 +385,11 @@ class EnvisalinkClient(asyncio.Protocol):
 
 
     async def queue_command(self, cmd, data, code = None):
-        _LOGGER.debug("Queueing command '%s' data: '%s' ; calling_task=%s", cmd, data, asyncio.current_task().get_name())
+        if _LOGGER.isEnabledFor(logging.DEBUG):
+            # Scrub the password and alarm code if necessary
+            logData = self.scrub_sensitive_data(data, code)
+            _LOGGER.debug("Queueing command '%s' data: '%s' ; calling_task=%s", cmd, logData, asyncio.current_task().get_name())
+
         op = self.Operation(cmd, data, code)
         op.expiryTime = time.time() + self._alarmPanel.command_timeout
         self._commandQueue.append(op)
@@ -531,3 +532,17 @@ class EnvisalinkClient(asyncio.Protocol):
         # Only update if it's happening sooner than the previous guess
         if when < self.self._nextExpectedReceiveTime:
             self.self._nextExpectedReceiveTime = when
+
+    def scrub_sensitive_data(self, data, code = None):
+        if not self._loggedin:
+            # Remove the password from the log entry
+            logData = data.replace(self._alarmPanel.password, "*" * len(self._alarmPanel.password))
+        else:
+            logData = data
+
+        if not code and self._commandQueue and self._commandQueue[0].code:
+            code = str(self._commandQueue[0].code)
+        if code:
+            logData = logData.replace(code, "*" * len(code))
+        return logData
+
