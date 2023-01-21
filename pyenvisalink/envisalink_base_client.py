@@ -124,7 +124,7 @@ class EnvisalinkClient(asyncio.Protocol):
                     while not self._shutdown and self._reader:
                         _LOGGER.debug("Waiting for data from EVL")
                         try:
-                            data = await asyncio.wait_for(self._reader.read(n=256), 5)
+                            data = await asyncio.wait_for(self._reader.read(n=1024), 5)
                         except asyncio.exceptions.TimeoutError:
                             continue
 
