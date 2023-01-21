@@ -32,7 +32,7 @@ class EnvisalinkClient(asyncio.Protocol):
             self.responseEvent = asyncio.Event()
 
             self._lastReceiveTime = 0
-            self._nextExpectedReceiveTime = 0
+            self._nextExpectedReceiveWindow = None
 
 
     def __init__(self, panel, loop):
@@ -129,7 +129,7 @@ class EnvisalinkClient(asyncio.Protocol):
                             break
 
                         self._lastReceiveTime = time.time()
-                        self._nextExpectedReceiveTime = 0
+                        self._nextExpectedReceiveWindow = None
 
                         data = data.decode('ascii')
                         _LOGGER.debug('{---------------------------------------')
@@ -394,6 +394,7 @@ class EnvisalinkClient(asyncio.Protocol):
         op.expiryTime = time.time() + self._alarmPanel.command_timeout
         self._commandQueue.append(op)
         self._commandEvent.set()
+
         await op.responseEvent.wait()
         return op.state == op.State.SUCCEEDED
 
@@ -522,16 +523,23 @@ class EnvisalinkClient(asyncio.Protocol):
             Avoiding writes just before we receive data from the EVL is harder and we have to use
             heuristics based on expected traffic patterns to try and predict when it's safe to send.
         """
+        delay = None
         now = time.time()
-        next_receive = self._nextExpectedReceiveTime - now
-        if abs(now - self._lastReceiveTime) < 0.01 or abs(next_receive) < 0.01:
-            _LOGGER.error("Delaying send to avoid being too close to a receive.")
-            await asyncio.sleep(0.1)
+        if self._nextExpectedReceiveWindow:
+            if (self._nextExpectedReceiveWindow[0] - 0.01) < now < (self._nextExpectedReceiveWindow[1] + 0.01):
+                delay = (self._nextExpectedReceiveWindow[1] - now) + 0.1
+        elif abs(now - self._lastReceiveTime) < 0.01:
+            delay = 0.1
 
-    def set_next_expected_receive_time(self, when):
+
+        if delay is not None:
+            _LOGGER.error("Delaying send to avoid being too close to a receive by %f seconds.", delay)
+            await asyncio.sleep(delay)
+
+    def set_next_expected_receive_window(self, window : tuple):
         # Only update if it's happening sooner than the previous guess
-        if when < self.self._nextExpectedReceiveTime:
-            self.self._nextExpectedReceiveTime = when
+        if self._nextExpectedReceiveWindow is None or window[0] < self._nextExpectedReceiveWindow[0]:
+            self._nextExpectedReceiveWindow = window
 
     def scrub_sensitive_data(self, data, code = None):
         if not self._loggedin:
