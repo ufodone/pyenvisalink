@@ -68,10 +68,18 @@ class EnvisalinkClient(asyncio.Protocol):
         self._shutdown = False
         self._commandTask = self.create_internal_task(self.process_command_queue(), name="command_processor")
         self._readLoopTask = self.create_internal_task(self.read_loop(), name="read_loop")
-        self._keepAliveTask = self.create_internal_task(self.keep_alive(), name="keep_alive")
+
+        if self._alarmPanel.keepalive_interval > 0:
+            self.create_internal_task(
+                self.periodic_command(self.keep_alive, self._alarmPanel.keepalive_interval),
+                name="keep_alive"
+            )
 
         if self._alarmPanel.zone_timer_interval > 0:
-            self.create_internal_task(self.periodic_zone_timer_dump(), name="zone_timer_dump")
+            self.create_internal_task(
+                self.periodic_command(self.dump_zone_timers, self._alarmPanel.zone_timer_interval),
+                name="zone_timer_dump"
+            )
 
         if self._ownLoop:
             _LOGGER.info("Starting up our own event loop.")
@@ -147,14 +155,16 @@ class EnvisalinkClient(asyncio.Protocol):
 
         await self.disconnect()
 
+    async def periodic_command(self, action, interval):
+        """Used to periodically send a keepalive command to reset the envisalink's watchdog timer."""
+        while not self._shutdown:
+            next_send = time.time() + interval
 
-    async def keep_alive(self):
-        """Used to periodically send a keepalive message to the envisalink."""
-        raise NotImplementedError()
+            if self._loggedin:
+                await action()
 
-    async def periodic_zone_timer_dump(self):
-        """Used to periodically get the zone timers to make sure our zones are updated."""
-        raise NotImplementedError()
+            now = time.time();
+            await asyncio.sleep(next_send - now)
             
     async def connect(self):
         _LOGGER.info(str.format("Started to connect to Envisalink... at {0}:{1}", self._alarmPanel.host, self._alarmPanel.port))
@@ -210,6 +220,10 @@ class EnvisalinkClient(asyncio.Protocol):
 
     async def dump_zone_timers(self):
         """Public method for dumping zone timers."""
+        raise NotImplementedError()
+
+    async def keep_alive(self):
+        """Send a keepalive command to reset it's watchdog timer."""
         raise NotImplementedError()
 
     async def change_partition(self, partitionNumber):
