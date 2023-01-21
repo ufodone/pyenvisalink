@@ -31,9 +31,6 @@ class EnvisalinkClient(asyncio.Protocol):
             self.expiryTime = 0
             self.responseEvent = asyncio.Event()
 
-            self._lastReceiveTime = 0
-            self._nextExpectedReceiveWindow = None
-
 
     def __init__(self, panel, loop):
         self._loggedin = False
@@ -128,9 +125,6 @@ class EnvisalinkClient(asyncio.Protocol):
                             await self.disconnect()
                             break
 
-                        self._lastReceiveTime = time.time()
-                        self._nextExpectedReceiveWindow = None
-
                         data = data.decode('ascii')
                         _LOGGER.debug('{---------------------------------------')
                         _LOGGER.debug(str.format('RX < {0}', data))
@@ -204,8 +198,6 @@ class EnvisalinkClient(asyncio.Protocol):
             _LOGGER.debug('TX > %s', logData.encode('ascii'))
 
         try:
-            await self.delay_write_if_needed()
-
             self._writer.write((data + '\r\n').encode('ascii'))
             await self._writer.drain()
         except Exception as err:
@@ -513,33 +505,6 @@ class EnvisalinkClient(asyncio.Protocol):
 
         # Wake up the command processing task to process this result
         self._commandEvent.set()
-
-    async def delay_write_if_needed(self):
-        """ Some EVLs can become non-responsive for a period of time if sends and receives happen
-            within the same millisecond.
-
-            If we have received data from the EVL within 1ms then delay the send for a little bit.
-
-            Avoiding writes just before we receive data from the EVL is harder and we have to use
-            heuristics based on expected traffic patterns to try and predict when it's safe to send.
-        """
-        delay = None
-        now = time.time()
-        if self._nextExpectedReceiveWindow:
-            if (self._nextExpectedReceiveWindow[0] - 0.01) < now < (self._nextExpectedReceiveWindow[1] + 0.01):
-                delay = (self._nextExpectedReceiveWindow[1] - now) + 0.1
-        elif abs(now - self._lastReceiveTime) < 0.01:
-            delay = 0.1
-
-
-        if delay is not None:
-            _LOGGER.error("Delaying send to avoid being too close to a receive by %f seconds.", delay)
-            await asyncio.sleep(delay)
-
-    def set_next_expected_receive_window(self, window : tuple):
-        # Only update if it's happening sooner than the previous guess
-        if self._nextExpectedReceiveWindow is None or window[0] < self._nextExpectedReceiveWindow[0]:
-            self._nextExpectedReceiveWindow = window
 
     def scrub_sensitive_data(self, data, code = None):
         if not self._loggedin:
