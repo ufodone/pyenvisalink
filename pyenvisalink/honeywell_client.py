@@ -26,10 +26,16 @@ class HoneywellClient(EnvisalinkClient):
 
     async def keypresses_to_partition(self, partitionNumber, keypresses):
         """Send keypresses to a particular partition."""
+        commands = []
         for char in keypresses:
-            result = await self.queue_command(evl_Commands['PartitionKeypress'], str.format("{0},{1}", partitionNumber, char))
-            if not result:
-                break
+            commands.append({
+                "cmd": evl_Commands['PartitionKeypress'],
+                "data": str.format("{0},{1}", partitionNumber, char)
+            })
+
+        # Queue up all the keypresses together to ensure an unrelated command cannot
+        # be inserted in the middle.
+        await self.queue_commands(commands)
 
     async def arm_stay_partition(self, code, partitionNumber):
         """Public method to arm/stay a partition."""

@@ -391,17 +391,28 @@ class EnvisalinkClient(asyncio.Protocol):
 
 
     async def queue_command(self, cmd, data, code = None):
-        if _LOGGER.isEnabledFor(logging.DEBUG):
-            # Scrub the password and alarm code if necessary
-            logData = self.scrub_sensitive_data(data, code)
-            _LOGGER.debug("Queueing command '%s' data: '%s' ; calling_task=%s", cmd, logData, asyncio.current_task().get_name())
+        return await self.queue_commands([ { "cmd": cmd, "data": data, "code": code }])
 
-        op = self.Operation(cmd, data, code)
-        op.expiryTime = time.time() + self._alarmPanel.command_timeout
-        self._commandQueue.append(op)
+    async def queue_commands(self, command_list : list):
+        operations = []
+        for command in command_list:
+            cmd = command["cmd"]
+            data = command["data"]
+            code = command.get("code")
+
+            if _LOGGER.isEnabledFor(logging.DEBUG):
+                # Scrub the password and alarm code if necessary
+                logData = self.scrub_sensitive_data(data, code)
+                _LOGGER.debug("Queueing command '%s' data: '%s' ; calling_task=%s", cmd, logData, asyncio.current_task().get_name())
+
+            op = self.Operation(cmd, data, code)
+            op.expiryTime = time.time() + self._alarmPanel.command_timeout
+            operations.append(op)
+            self._commandQueue.append(op)
+
         self._commandEvent.set()
-
-        await op.responseEvent.wait()
+        for op in operations:
+            await op.responseEvent.wait()
         return op.state == op.State.SUCCEEDED
 
     async def process_command_queue(self):
