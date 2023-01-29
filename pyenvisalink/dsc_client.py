@@ -14,8 +14,8 @@ _LOGGER = logging.getLogger(__name__)
 class DSCClient(EnvisalinkClient):
     """Represents a dsc alarm client."""
 
-    def __init__(self, panel, loop):
-        super().__init__(panel, loop)
+    def __init__(self, panel):
+        super().__init__(panel)
 
     def to_chars(self, string):
         chars = []

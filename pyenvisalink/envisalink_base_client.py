@@ -35,18 +35,10 @@ class EnvisalinkClient:
             self.expiryTime = 0
             self.responseEvent = asyncio.Event()
 
-    def __init__(self, panel, loop):
+    def __init__(self, panel):
         self._loggedin = False
         self._alarmPanel = panel
-        if loop is None:
-            _LOGGER.info("Creating our own event loop.")
-            self._eventLoop = asyncio.new_event_loop()
-            self._ownLoop = True
-        else:
-            _LOGGER.info("Latching onto an existing event loop.")
-            self._eventLoop = loop
-            self._ownLoop = False
-
+        self._eventLoop = asyncio.get_event_loop()
         self._reader = None
         self._writer = None
         self._shutdown = False
