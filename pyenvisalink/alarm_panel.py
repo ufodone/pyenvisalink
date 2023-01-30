@@ -12,8 +12,10 @@ PANEL_TYPE_HONEYWELL = "HONEYWELL"
 _LOGGER = logging.getLogger(__name__)
 COMMAND_ERR = "Cannot run this command while disconnected. Please run start() first."
 
+
 class EnvisalinkAlarmPanel:
     """This class represents an envisalink-based alarm panel."""
+
     class ConnectionResult(Enum):
         SUCCESS = "success"
         INVALID_AUTHORIZATION = "invalid_authorization"
@@ -21,13 +23,21 @@ class EnvisalinkAlarmPanel:
         INVALID_PANEL_TYPE = "invalid_panel_type"
         INVALID_EVL_VERSION = "invalid_evl_version"
         DISCOVERY_NOT_COMPLETE = "discovery_not_complete"
-        
-    def __init__(self, host, port=4025,
-                 userName='user', password='user',
-                 zoneTimerInterval=20, keepAliveInterval=30, eventLoop=None,
-                 connectionTimeout=10, zoneBypassEnabled=False,
-                 commandTimeout=5.0,
-                 httpPort=8080):
+
+    def __init__(
+        self,
+        host,
+        port=4025,
+        userName="user",
+        password="user",
+        zoneTimerInterval=20,
+        keepAliveInterval=30,
+        eventLoop=None,
+        connectionTimeout=10,
+        zoneBypassEnabled=False,
+        commandTimeout=5.0,
+        httpPort=8080,
+    ):
         self._discoveryComplete = False
         self._macAddress = None
         self._firmwareVersion = None
@@ -47,7 +57,7 @@ class EnvisalinkAlarmPanel:
         self._eventLoop = eventLoop
         self._zoneBypassEnabled = zoneBypassEnabled
         self._commandTimeout = commandTimeout
-        
+
         self._loginSuccessCallback = self._defaultCallback
         self._loginFailureCallback = self._defaultCallback
         self._loginTimeoutCallback = self._defaultCallback
@@ -59,35 +69,34 @@ class EnvisalinkAlarmPanel:
         self._cidEventCallback = self._defaultCallback
         self._zoneTimerCallback = self._defaultCallback
 
-        loggingconfig = {'level': 'DEBUG',
-                     'format': '%(asctime)s %(levelname)s <%(name)s %(module)s %(funcName)s> %(message)s'}
+        loggingconfig = {"level": "DEBUG", "format": "%(asctime)s %(levelname)s <%(name)s %(module)s %(funcName)s> %(message)s"}
 
         logging.basicConfig(**loggingconfig)
 
     @property
     def host(self):
         return self._host
-        
-    @ property
+
+    @property
     def port(self):
         return self._port
 
-    @ property
+    @property
     def connection_timeout(self):
         return self._connectionTimeout
-        
-    @ property
+
+    @property
     def command_timeout(self):
         return self._commandTimeout
-        
+
     @property
     def user_name(self):
         return self._username
-        
+
     @property
     def password(self):
         return self._password
-        
+
     @property
     def panel_type(self):
         return self._panelType
@@ -103,7 +112,7 @@ class EnvisalinkAlarmPanel:
     @envisalink_version.setter
     def envisalink_version(self, version):
         self._evlVersion = version
-        
+
     @property
     def keepalive_interval(self):
         return self._keepAliveInterval
@@ -141,7 +150,7 @@ class EnvisalinkAlarmPanel:
     @property
     def callback_login(self):
         return self._defaultCallback
-        
+
     @property
     def callback_login_success(self):
         return self._loginSuccessCallback
@@ -217,14 +226,14 @@ class EnvisalinkAlarmPanel:
     @property
     def callback_zone_timer_dump(self):
         return self._zoneTimerCallback
- 
+
     @callback_zone_timer_dump.setter
     def callback_zone_timer_dump(self, value):
         self._zoneTimerCallback = value
-        
+
     def _defaultCallback(self, data):
         """This is the callback that occurs when the client doesn't subscribe."""
-        _LOGGER.debug("Callback has not been set by client.")	    
+        _LOGGER.debug("Callback has not been set by client.")
 
     async def start(self):
         # Validate the connection first if it hasn't been done already
@@ -255,7 +264,7 @@ class EnvisalinkAlarmPanel:
             return self.ConnectionResult.INVALID_PANEL_TYPE
 
         return self.ConnectionResult.SUCCESS
-        
+
     async def stop(self):
         """Shut down and close our connection to the envisalink."""
         if self._client:
@@ -356,7 +365,7 @@ class EnvisalinkAlarmPanel:
 
         try:
             async with aiohttp.ClientSession(auth=aiohttp.BasicAuth(self._username, self._password)) as client:
-                url = f'http://{self._host}:{self._httpPort}/2'
+                url = f"http://{self._host}:{self._httpPort}/2"
                 resp = await client.get(url)
                 if resp.status != 200:
                     _LOGGER.warn("Unable to discover Envisalink version and patel type: '%s'", resp.status)
@@ -364,7 +373,7 @@ class EnvisalinkAlarmPanel:
 
                 # Try and scrape the HTML for the EVL version and panel type
                 html = await resp.text()
-                version_regex = '<TITLE>Envisalink ([0-9])<\/TITLE>'
+                version_regex = "<TITLE>Envisalink ([0-9])<\/TITLE>"
 
                 m = re.search(version_regex, html)
                 if m is None or m.lastindex != 1:
@@ -372,13 +381,13 @@ class EnvisalinkAlarmPanel:
                 else:
                     self._evlVersion = int(m.group(1))
 
-                panel_regex = '>Security Subsystem - ([^<]*)<'
+                panel_regex = ">Security Subsystem - ([^<]*)<"
                 m = re.search(panel_regex, html)
                 if m is None or m.lastindex != 1:
                     _LOGGER.warn("Unable to determine panel type: raw HTML: %s", html)
                 else:
                     self._panelType = m.group(1).upper()
-                    if self._panelType not in [ PANEL_TYPE_DSC, PANEL_TYPE_HONEYWELL ]:
+                    if self._panelType not in [PANEL_TYPE_DSC, PANEL_TYPE_HONEYWELL]:
                         _LOGGER.warn("Unrecognized panel type: %s", self._panelType)
         except Exception as ex:
             _LOGGER.error("Unable to fetch panel information: %s", ex)
@@ -386,14 +395,14 @@ class EnvisalinkAlarmPanel:
 
         _LOGGER.info(f"Discovered Envisalink %s: %s", self._evlVersion, self._panelType)
         return True
-        
+
     async def discover(self) -> ConnectionResult:
         self._macAddress = None
         self._firmwareVersion = None
 
         try:
             async with aiohttp.ClientSession(auth=aiohttp.BasicAuth(self._username, self._password)) as client:
-                url = f'http://{self._host}:{self._httpPort}/3'
+                url = f"http://{self._host}:{self._httpPort}/3"
                 resp = await client.get(url)
                 if resp.status == 401:
                     _LOGGER.error("Unable to validate connection: invalid authorization.")
@@ -407,8 +416,8 @@ class EnvisalinkAlarmPanel:
                 else:
                     # Attempt to extract the firmware version and MAC address from the returned HTML
                     html = await resp.text()
-                    fw_regex = 'Firmware Version: ([^ ]*)'
-                    mac_regex = 'MAC: ([0-9a-fA-F]*)'
+                    fw_regex = "Firmware Version: ([^ ]*)"
+                    mac_regex = "MAC: ([0-9a-fA-F]*)"
 
                     m = re.search(fw_regex, html)
                     if m is None or m.lastindex != 1:
@@ -430,4 +439,3 @@ class EnvisalinkAlarmPanel:
         _LOGGER.info(f"Firmware Version: '{self._firmwareVersion}' / MAC address: '{self._macAddress}'")
         self._discoveryComplete = True
         return self.ConnectionResult.SUCCESS
-

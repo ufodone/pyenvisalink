@@ -17,8 +17,8 @@ PARTITION_STATE_NOT_READY = "651"
 
 log = logging.getLogger(__name__)
 
-class DscServer(MockServer):
 
+class DscServer(MockServer):
     def __init__(self, num_zones, num_partitions, password):
         super().__init__(num_zones, num_partitions, password)
 
@@ -27,14 +27,13 @@ class DscServer(MockServer):
             self._zone_status.append(ZONE_STATUS_RESTORED)
 
         self._arm_modes = {
-            'disarmed' : -1,
-            'away' : 0,
-            'stay' : 1,
-            'zero_entry_away' : 2,
-            'zero_entry_stay' : 3,
+            "disarmed": -1,
+            "away": 0,
+            "stay": 1,
+            "zero_entry_away": 2,
+            "zero_entry_stay": 3,
         }
-        self._arm_state = 'disarmed'
-
+        self._arm_state = "disarmed"
 
     async def hello(self):
         await self.send_response(self.encode_command("505", "3"))
@@ -47,31 +46,31 @@ class DscServer(MockServer):
             return False
 
         success = False
-        if cmd == "000": # Poll
+        if cmd == "000":  # Poll
             success = await self.poll()
-        elif cmd == "001": # Status Report
+        elif cmd == "001":  # Status Report
             success = await self.status_report()
-        elif cmd == "008": # Dump Zone Timers
+        elif cmd == "008":  # Dump Zone Timers
             success = await self.dump_zone_timers()
-        elif cmd == "005": # Network Login
+        elif cmd == "005":  # Network Login
             success = await self.login(data)
-        elif cmd == "010": # Set Time & Date
+        elif cmd == "010":  # Set Time & Date
             success = await self.set_time_and_date()
-        elif cmd == "020": # Command Output Control
+        elif cmd == "020":  # Command Output Control
             success = await self.command_output_control()
-        elif cmd == "030": # Partition Arm Control
+        elif cmd == "030":  # Partition Arm Control
             success = await self.arm_away()
-        elif cmd == "031": # Partition Arm Control - Stay Arm
+        elif cmd == "031":  # Partition Arm Control - Stay Arm
             success = await self.arm_stay()
-        elif cmd == "032": # Partition Arm Control - Zero Entry Delay
+        elif cmd == "032":  # Partition Arm Control - Zero Entry Delay
             success = await self.arm_max()
-        elif cmd == "040": # Partition Disarm Control
+        elif cmd == "040":  # Partition Disarm Control
             success = await self.disarm()
-        elif cmd == "060": # Trigger Panic Alarm
+        elif cmd == "060":  # Trigger Panic Alarm
             success = await self.trigger_panic_alarm()
-        elif cmd == "071": # Send Keystroke String
+        elif cmd == "071":  # Send Keystroke String
             success = await self.handle_keystroke_sequence()
-        elif cmd == "200": # Send Code
+        elif cmd == "200":  # Send Code
             success = await self.receive_code()
         else:
             log.info(f"Unhandled command ({cmd}); data: {data}")
@@ -79,19 +78,17 @@ class DscServer(MockServer):
 
         return success
 
-
-#    def is_partition_ready(self, partition: int) -> bool:
-#        for zone in self._zone_status:
-#            if not zone:
-#                return False
-#        return True
+    #    def is_partition_ready(self, partition: int) -> bool:
+    #        for zone in self._zone_status:
+    #            if not zone:
+    #                return False
+    #        return True
 
     def get_checksum(self, code, data) -> str:
         checksum = 0
         for ch in code + data:
             checksum = checksum + ord(ch)
-        return "%02X" % (checksum & 0xff)
-
+        return "%02X" % (checksum & 0xFF)
 
     def decode_command(self, line) -> (str, str):
         if len(line) < 5:
@@ -118,7 +115,10 @@ class DscServer(MockServer):
         await self.write_raw(response)
 
     def encode_zone_timers(self) -> str:
-        return self.encode_command("615", "74FD94FF0000000075C200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+        return self.encode_command(
+            "615",
+            "74FD94FF0000000075C200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        )
 
     async def dump_zone_timers(self) -> bool:
         response = self.encode_command("500", "008")
@@ -127,7 +127,6 @@ class DscServer(MockServer):
 
         await self.send_response(self.encode_zone_timers())
         return True
-
 
     async def poll(self) -> bool:
         response = self.encode_command("500", "000")
@@ -140,9 +139,9 @@ class DscServer(MockServer):
 
         for zone, status in enumerate(self._zone_status, start=1):
             await self.send_response(self.encode_command(status, "%03d" % zone))
-        
+
         await self.send_response(self.encode_command("650", "1"))
-        #self.send_response(self.encode_command("673", "2"))
+        # self.send_response(self.encode_command("673", "2"))
         await self.send_response(self.encode_command("841", "1"))
         await self.send_response(self.encode_command("841", "2"))
         await self.send_response(self.encode_command("510", "81"))
@@ -162,8 +161,8 @@ class DscServer(MockServer):
 
         await self.send_response(response)
 
-#    response = self.encode_zone_timers()
-#    self.send_response(response)
+        #    response = self.encode_zone_timers()
+        #    self.send_response(response)
 
         return True
 
@@ -194,7 +193,7 @@ class DscServer(MockServer):
         await self.send_response(response)
 
         # Exit delay in progress
-        response = self.encode_command("656", "1") # Partition 1
+        response = self.encode_command("656", "1")  # Partition 1
         await self.send_response(response)
 
         asyncio.create_task(self.entry_delay())
@@ -235,6 +234,3 @@ class DscServer(MockServer):
         response = self.encode_command("500", "020")
         await self.send_response(response)
         return True
-
-
-

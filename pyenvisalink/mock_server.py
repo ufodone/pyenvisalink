@@ -1,10 +1,11 @@
 import asyncio
 import logging
 from alarm_state import AlarmState
+
 log = logging.getLogger(__name__)
 
-class MockServer:
 
+class MockServer:
     def __init__(self, num_zones, num_partitions, password):
         self._client_writer = None
 
@@ -19,7 +20,7 @@ class MockServer:
         self._client_writer = client_writer
 
     async def disconnected(self):
-        #await asyncio.sleep(0.5)
+        # await asyncio.sleep(0.5)
         if self._client_writer:
             self._client_writer.close()
             await self._client_writer.wait_closed()

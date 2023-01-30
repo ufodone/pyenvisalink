@@ -8,9 +8,9 @@ import base64
 from mock_server_dsc import DscServer
 from mock_server_honeywell import HoneywellServer
 
-EVL_VERSION=4
+EVL_VERSION = 4
 MOCK_TYPE = "HONEYWELL"
-#MOCK_TYPE = "DSC"
+# MOCK_TYPE = "DSC"
 PASSWORD = "12345"
 
 log = logging.getLogger(__name__)
@@ -18,6 +18,7 @@ log = logging.getLogger(__name__)
 clients = {}  # task -> (reader, writer)
 conns_open = 0
 evl_server = None
+
 
 def accept_client(client_reader, client_writer):
     log.info(f"Accepted connection: client_reader={client_reader}, client_writer={client_writer}")
@@ -65,7 +66,7 @@ async def handle_client(client_reader, client_writer):
             sdata = data.decode().rstrip()
             log.info(f"recv: {sdata}")
             if len(sdata) == 0:
-                # connection was closed 
+                # connection was closed
                 break
 
             if not await evl_server.process_command(sdata):
@@ -77,8 +78,9 @@ async def handle_client(client_reader, client_writer):
     await evl_server.disconnected()
     log.info(f"Exiting reader loop; conns_open={conns_open}")
 
+
 async def handle_http_client(client_reader, client_writer):
-    key = base64.b64encode(bytes(f'user:{PASSWORD}', 'utf-8')).decode('ascii')
+    key = base64.b64encode(bytes(f"user:{PASSWORD}", "utf-8")).decode("ascii")
 
     data = await client_reader.read(n=1024)
     data = data.decode()
@@ -86,12 +88,12 @@ async def handle_http_client(client_reader, client_writer):
 
     m = re.search("Authorization: Basic ([a-zA-Z0-9\+/=]+)", data)
     if not m or m.group(1) != key:
-        response = 'HTTP/1.1 401 Authorization Required\r\n'
-        response += 'Connection: close\r\n'
+        response = "HTTP/1.1 401 Authorization Required\r\n"
+        response += "Connection: close\r\n"
         response += 'WWW-Authenticate: Basic realm="4449E6229DCA89A55B9B051B390183CC"\r\n'
-        response += 'Content-Type: text/html\r\n'
-        response += '\r\n'
-        response += '<HTML><BODY><H1>Server Requires Authentication</H1></BODY></HTML>\r\n'
+        response += "Content-Type: text/html\r\n"
+        response += "\r\n"
+        response += "<HTML><BODY><H1>Server Requires Authentication</H1></BODY></HTML>\r\n"
         client_writer.write(response.encode())
     else:
         m = re.search("GET /([0-9]*)", data)
@@ -123,10 +125,10 @@ async def handle_cli_client(client_reader, client_writer):
 
         sdata = data.decode().rstrip()
         if len(sdata) == 0:
-            # connection was closed 
+            # connection was closed
             break
 
-        cmd = sdata.split(':')
+        cmd = sdata.split(":")
         log.info(f"{cmd}")
 
         if cmd[0] == "write":
@@ -148,6 +150,7 @@ def accept_http_client(client_reader, client_writer):
     log.info("New Connection")
     task.add_done_callback(client_done)
 
+
 def accept_cli_client(client_reader, client_writer):
     log.info(f"Accepted connection on cli endpoint: client_reader={client_reader}, client_writer={client_writer}")
     task = asyncio.Task(handle_cli_client(client_reader, client_writer))
@@ -161,6 +164,7 @@ def accept_cli_client(client_reader, client_writer):
     log.info("New Connection")
     task.add_done_callback(client_done)
 
+
 async def main():
     global evl_server
     if MOCK_TYPE == "DSC":
@@ -170,7 +174,6 @@ async def main():
         if EVL_VERSION == 4:
             num_zones = 128
         evl_server = HoneywellServer(num_zones, 1, PASSWORD)
-
 
     server = await asyncio.start_server(accept_client, host=None, port=4025)
     await server.start_serving()
@@ -184,10 +187,10 @@ async def main():
     while True:
         await asyncio.sleep(5)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     log = logging.getLogger("")
-    formatter = logging.Formatter("%(asctime)s %(levelname)s " +
-                                  "[%(module)s:%(lineno)d] %(message)s")
+    formatter = logging.Formatter("%(asctime)s %(levelname)s " + "[%(module)s:%(lineno)d] %(message)s")
     # setup console logging
     log.setLevel(logging.DEBUG)
     ch = logging.StreamHandler()
@@ -196,4 +199,3 @@ if __name__ == '__main__':
     ch.setFormatter(formatter)
     log.addHandler(ch)
     asyncio.run(main())
-

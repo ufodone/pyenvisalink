@@ -10,6 +10,7 @@ from .alarm_state import AlarmState
 
 _LOGGER = logging.getLogger(__name__)
 
+
 class EnvisalinkClient:
     """Abstract base class for the envisalink TPI client."""
 
@@ -27,11 +28,10 @@ class EnvisalinkClient:
             self.code = code
             self.logData = logData
             self.state = self.State.QUEUED
-            self.retryDelay = 0.1 # Start the retry backoff at 100ms
+            self.retryDelay = 0.1  # Start the retry backoff at 100ms
             self.retryTime = 0
             self.expiryTime = 0
             self.responseEvent = asyncio.Event()
-
 
     def __init__(self, panel, loop):
         self._loggedin = False
@@ -71,16 +71,10 @@ class EnvisalinkClient:
         self._readLoopTask = self.create_internal_task(self.read_loop(), name="read_loop")
 
         if self._alarmPanel.keepalive_interval > 0:
-            self.create_internal_task(
-                self.periodic_command(self.keep_alive, self._alarmPanel.keepalive_interval),
-                name="keep_alive"
-            )
+            self.create_internal_task(self.periodic_command(self.keep_alive, self._alarmPanel.keepalive_interval), name="keep_alive")
 
         if self._alarmPanel.zone_timer_interval > 0:
-            self.create_internal_task(
-                self.periodic_command(self.dump_zone_timers, self._alarmPanel.zone_timer_interval),
-                name="zone_timer_dump"
-            )
+            self.create_internal_task(self.periodic_command(self.dump_zone_timers, self._alarmPanel.zone_timer_interval), name="zone_timer_dump")
 
         if self._ownLoop:
             _LOGGER.info("Starting up our own event loop.")
@@ -95,7 +89,7 @@ class EnvisalinkClient:
 
         # Wake up the command processor task to allow it to exit
         self._commandEvent.set()
-        
+
         # Cancel all tasks
         for t in self._activeTasks:
             t.cancel()
@@ -124,21 +118,21 @@ class EnvisalinkClient:
                     while not self._shutdown and self._reader:
                         _LOGGER.debug("Waiting for data from EVL")
                         try:
-                            data = await asyncio.wait_for(self._reader.readuntil(separator=b'\n'), 5)
+                            data = await asyncio.wait_for(self._reader.readuntil(separator=b"\n"), 5)
                         except asyncio.exceptions.TimeoutError:
                             continue
 
                         if not data or len(data) == 0 or self._reader.at_eof():
-                            _LOGGER.error('The server closed the connection.')
+                            _LOGGER.error("The server closed the connection.")
                             await self.disconnect()
                             break
 
-                        data = data.decode('ascii')
-                        _LOGGER.debug('{---------------------------------------')
-                        _LOGGER.debug(str.format('RX < {0}', data))
+                        data = data.decode("ascii")
+                        _LOGGER.debug("{---------------------------------------")
+                        _LOGGER.debug(str.format("RX < {0}", data))
 
                         self.process_data(data.strip())
-                        _LOGGER.debug('}---------------------------------------')
+                        _LOGGER.debug("}---------------------------------------")
                 except Exception as ex:
                     _LOGGER.error("Caught unexpected exception: %r", ex)
                     await self.disconnect()
@@ -159,9 +153,9 @@ class EnvisalinkClient:
             if self._loggedin:
                 await action()
 
-            now = time.time();
+            now = time.time()
             await asyncio.sleep(next_send - now)
-            
+
     async def connect(self):
         _LOGGER.info(str.format("Started to connect to Envisalink... at {0}:{1}", self._alarmPanel.host, self._alarmPanel.port))
         try:
@@ -171,13 +165,13 @@ class EnvisalinkClient:
         except Exception as ex:
             self._loggedin = False
             if not self._shutdown:
-                _LOGGER.error('Unable to connect to envisalink: %r', ex)
+                _LOGGER.error("Unable to connect to envisalink: %r", ex)
                 self._alarmPanel._loginTimeoutCallback(False)
             await self.disconnect()
 
     async def disconnect(self):
         """Internal method for forcing connection closure if hung."""
-        _LOGGER.debug('Cleaning up from disconnection with server.')
+        _LOGGER.debug("Cleaning up from disconnection with server.")
 
         self._loggedin = False
 
@@ -195,22 +189,22 @@ class EnvisalinkClient:
 
         self._writer = None
         self._reader = None
-            
-    async def send_data(self, data, logData = None):
+
+    async def send_data(self, data, logData=None):
         """Raw data send- just make sure it's encoded properly and logged."""
         # Scrub the password and alarm code if necessary
         if not logData:
             logData = self.scrub_sensitive_data(data)
-        _LOGGER.debug('TX > %s', logData.encode('ascii'))
+        _LOGGER.debug("TX > %s", logData.encode("ascii"))
 
         try:
-            self._writer.write((data + '\r\n').encode('ascii'))
+            self._writer.write((data + "\r\n").encode("ascii"))
             await self._writer.drain()
         except Exception as err:
-            _LOGGER.error('Failed to write to the stream: %r', err)
+            _LOGGER.error("Failed to write to the stream: %r", err)
             await self.disconnect()
 
-    async def send_command(self, code, data, logData = None):
+    async def send_command(self, code, data, logData=None):
         """Used to send a properly formatted command to the envisalink"""
         raise NotImplementedError()
 
@@ -269,22 +263,22 @@ class EnvisalinkClient:
     def parseHandler(self, rawInput):
         """When the envisalink contacts us- parse out which command and data."""
         raise NotImplementedError()
-        
+
     def process_data(self, data) -> str:
         cmd = self.parseHandler(data)
 
         try:
-            _LOGGER.debug(str.format('calling handler: {0} for code: {1} with data: {2}', cmd['handler'], cmd['code'], cmd['data']))
-            handlerFunc = getattr(self, cmd['handler'])
-            result = handlerFunc(cmd['code'], cmd['data'])
+            _LOGGER.debug(str.format("calling handler: {0} for code: {1} with data: {2}", cmd["handler"], cmd["code"], cmd["data"]))
+            handlerFunc = getattr(self, cmd["handler"])
+            result = handlerFunc(cmd["code"], cmd["data"])
 
         except (AttributeError, TypeError, KeyError) as err:
             _LOGGER.debug("No handler configured for evl command.")
             _LOGGER.debug(str.format("KeyError: {0}", err))
 
         try:
-            _LOGGER.debug(str.format('Invoking callback: {0}', cmd['callback']))
-            callbackFunc = getattr(self._alarmPanel, cmd['callback'])
+            _LOGGER.debug(str.format("Invoking callback: {0}", cmd["callback"]))
+            callbackFunc = getattr(self._alarmPanel, cmd["callback"])
             callbackFunc(result)
 
         except (AttributeError, TypeError, KeyError) as err:
@@ -295,7 +289,7 @@ class EnvisalinkClient:
         returnItems = []
         zoneNumber = 1
         # every four characters
-        inputItems = re.findall('....', theString)
+        inputItems = re.findall("....", theString)
         for inputItem in inputItems:
             # Swap the couples of every four bytes (little endian to big endian)
             swapedBytes = []
@@ -303,24 +297,24 @@ class EnvisalinkClient:
             swapedBytes.insert(0, inputItem[2:4])
 
             # add swapped set of four bytes to our return items, converting from hex to int
-            itemHexString = ''.join(swapedBytes)
+            itemHexString = "".join(swapedBytes)
             itemInt = int(itemHexString, 16)
 
             # each value is a timer for a zone that ticks down every five seconds from maxint
-            MAXINT = 0xffff
+            MAXINT = 0xFFFF
             itemTicks = MAXINT - itemInt
             itemSeconds = itemTicks * 5
 
-            status = ''
+            status = ""
             if self.is_zone_open_from_zonedump(zoneNumber, itemTicks):
-                status = 'open'
+                status = "open"
             else:
-                status = 'closed'
+                status = "closed"
 
-            returnItems.append({'zone': zoneNumber, 'status': status, 'seconds': itemSeconds})
+            returnItems.append({"zone": zoneNumber, "status": status, "seconds": itemSeconds})
             zoneNumber += 1
         return returnItems
-            
+
     def handle_login(self, code, data):
         """Handler for when the envisalink challenges for password."""
         raise NotImplementedError()
@@ -328,17 +322,17 @@ class EnvisalinkClient:
     def handle_login_success(self, code, data):
         """Handler for when the envisalink accepts our credentials."""
         self._loggedin = True
-        _LOGGER.debug('Password accepted, session created')
+        _LOGGER.debug("Password accepted, session created")
 
     def handle_login_failure(self, code, data):
         """Handler for when the envisalink rejects our credentials."""
         self._loggedin = False
-        _LOGGER.error('Password is incorrect. Server is closing socket connection.')
+        _LOGGER.error("Password is incorrect. Server is closing socket connection.")
 
     def handle_keypad_update(self, code, data):
         """Handler for when the envisalink wishes to send us a keypad update."""
         raise NotImplementedError()
-        
+
     def handle_command_response(self, code, data):
         """When we send any command- this will be called to parse the initial response."""
         raise NotImplementedError()
@@ -357,7 +351,7 @@ class EnvisalinkClient:
 
     def is_zone_open_from_zonedump(self, zone, ticks) -> bool:
         """Indicate whether or not a zone should be considered open based on the number of
-           ticks in a zone dump timer update"""
+        ticks in a zone dump timer update"""
         raise NotImplementedError()
 
     def handle_zone_timer_dump(self, code, data):
@@ -365,23 +359,22 @@ class EnvisalinkClient:
         results = []
         zoneInfoArray = self.convertZoneDump(data)
         for zoneNumber, zoneInfo in enumerate(zoneInfoArray, start=1):
-            currentStatus = self._alarmPanel.alarm_state['zone'][zoneNumber]['status']
-            newOpen = zoneInfo['status'] == 'open'
-            newFault = zoneInfo['status'] == 'open'
-            if newOpen != currentStatus['open'] or newFault != currentStatus['fault']:
+            currentStatus = self._alarmPanel.alarm_state["zone"][zoneNumber]["status"]
+            newOpen = zoneInfo["status"] == "open"
+            newFault = zoneInfo["status"] == "open"
+            if newOpen != currentStatus["open"] or newFault != currentStatus["fault"]:
                 # State changed so add to result list
                 results.append(zoneNumber)
 
-            self._alarmPanel.alarm_state['zone'][zoneNumber]['status'].update({'open': newOpen, 'fault': newFault})
-            self._alarmPanel.alarm_state['zone'][zoneNumber]['last_fault'] = zoneInfo['seconds']
-            _LOGGER.debug("(zone %i) %s", zoneNumber, zoneInfo['status'])
+            self._alarmPanel.alarm_state["zone"][zoneNumber]["status"].update({"open": newOpen, "fault": newFault})
+            self._alarmPanel.alarm_state["zone"][zoneNumber]["last_fault"] = zoneInfo["seconds"]
+            _LOGGER.debug("(zone %i) %s", zoneNumber, zoneInfo["status"])
         return results
 
+    async def queue_command(self, cmd, data, code=None):
+        return await self.queue_commands([{"cmd": cmd, "data": data, "code": code}])
 
-    async def queue_command(self, cmd, data, code = None):
-        return await self.queue_commands([ { "cmd": cmd, "data": data, "code": code }])
-
-    async def queue_commands(self, command_list : list):
+    async def queue_commands(self, command_list: list):
         operations = []
         for command in command_list:
             cmd = command["cmd"]
@@ -405,10 +398,10 @@ class EnvisalinkClient:
         return op.state == op.State.SUCCEEDED
 
     async def process_command_queue(self):
-        """Manage processing of commands to be issued to the EVL.  Commands are serialized to the EVL to avoid 
-           overwhelming it and to make it easy to pair up responses (since there are no sequence numbers for requests).
+        """Manage processing of commands to be issued to the EVL.  Commands are serialized to the EVL to avoid
+        overwhelming it and to make it easy to pair up responses (since there are no sequence numbers for requests).
 
-           Operations that fail due to a recoverable error (e.g. buffer overruns) will be re-tried with a backoff.
+        Operations that fail due to a recoverable error (e.g. buffer overruns) will be re-tried with a backoff.
         """
         _LOGGER.info("Command processing task started.")
 
@@ -491,7 +484,7 @@ class EnvisalinkClient:
         # Wake up the command processing task to process this result
         self._commandEvent.set()
 
-    def command_failed(self, retry = False):
+    def command_failed(self, retry=False):
         """Indicate that a command issued to the EVL has failed."""
 
         if self._commandQueue:
@@ -520,7 +513,7 @@ class EnvisalinkClient:
         # Wake up the command processing task to process this result
         self._commandEvent.set()
 
-    def scrub_sensitive_data(self, data, code = None):
+    def scrub_sensitive_data(self, data, code=None):
         if not self._loggedin:
             # Remove the password from the log entry
             logData = data.replace(self._alarmPanel.password, "*" * len(self._alarmPanel.password))
@@ -532,4 +525,3 @@ class EnvisalinkClient:
         if code:
             logData = logData.replace(code, "*" * len(code))
         return logData
-

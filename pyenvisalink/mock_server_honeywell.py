@@ -20,8 +20,8 @@ ERR_RECV_STATE_MACHINE_TIMEOUT = "05"
 
 log = logging.getLogger(__name__)
 
-class HoneywellServer(MockServer):
 
+class HoneywellServer(MockServer):
     def __init__(self, num_zones, num_partitions, password):
         super().__init__(num_zones, num_partitions, password)
 
@@ -48,20 +48,19 @@ class HoneywellServer(MockServer):
             return False
 
         success = False
-        if cmd == CMD_POLL: # Poll
+        if cmd == CMD_POLL:  # Poll
             success = await self.poll()
-        elif cmd == CMD_CHANGE_DEFAULT_PARTITION: # Change Default Partition
+        elif cmd == CMD_CHANGE_DEFAULT_PARTITION:  # Change Default Partition
             success = await self.change_default_partition()
-        elif cmd == CMD_DUMP_ZONE_TIMERS: # Dump Zone Timers
+        elif cmd == CMD_DUMP_ZONE_TIMERS:  # Dump Zone Timers
             success = await self.dump_zone_timers()
-        elif cmd == CMD_KEYPRESS_TO_PARTITION: # Keypress to specific partition
+        elif cmd == CMD_KEYPRESS_TO_PARTITION:  # Keypress to specific partition
             success = await self.handle_keystroke_sequence()
         else:
             log.info(f"Unhandled command ({cmd}); data: {data}")
             return False
 
         return success
-
 
     def is_partition_ready(self, partition: int) -> bool:
         for zone in self._zone_status:
@@ -98,7 +97,7 @@ class HoneywellServer(MockServer):
         await self.write_raw(f"{response}\r\n")
 
     def encode_zone_timers(self) -> str:
-        #return "74FD94FF0000000075C200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        # return "74FD94FF0000000075C200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
         return "0000FEFF0000000071CA0000FDFF000000000000000000000000000000000000ACFC00000000000092D00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
 
     async def dump_zone_timers(self) -> bool:
@@ -124,9 +123,9 @@ class HoneywellServer(MockServer):
         self._logged_in = True
         await self.send_response("OK")
 
-###
-#        self.send_response(f"OK\r\n%FF,{self.encode_zone_timers()}$\r\n")
-####
+        ###
+        #        self.send_response(f"OK\r\n%FF,{self.encode_zone_timers()}$\r\n")
+        ####
 
         # Start task to send Virtual Keypad Updates
         self._keypad_task = asyncio.create_task(self.keypad_updater(), name="keypad_updater")
@@ -137,12 +136,11 @@ class HoneywellServer(MockServer):
         await self.send_command_response(CMD_KEYPRESS_TO_PARTITION, ERR_SUCCESS)
         return True
 
-
     async def keypad_updater(self):
         toggle = False
         while self._logged_in:
             # TODO: Hack to simulate zone faulting periodically
-            if random.randint(1,5) == 1:
+            if random.randint(1, 5) == 1:
                 await self.send_server_data("00", "01,0008,07,00,FAULT 07 DEN    MOTION          ")
                 await self.send_server_data("00", "01,000C,58,00,ARMED ***AWAY***May Exit Now  58")
             else:
@@ -157,12 +155,10 @@ class HoneywellServer(MockServer):
                 HEX = "0"
             toggle = not toggle
             try:
-                for i in range(0,int(self._num_zones/4)):
+                for i in range(0, int(self._num_zones / 4)):
                     zone_info += HEX[random.randrange(len(HEX))]
             except Exception as ex:
                 print(ex)
 
             await self.send_server_data("01", zone_info)
             await asyncio.sleep(10)
-            
-
