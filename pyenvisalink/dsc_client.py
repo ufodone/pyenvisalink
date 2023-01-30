@@ -83,9 +83,9 @@ class DSCClient(EnvisalinkClient):
         if rawInput != "":
             if re.match(r"\d\d:\d\d:\d\d\s", rawInput):
                 dataoffset = dataoffset + 9
-            code = rawInput[dataoffset : dataoffset + 3]
+            code = rawInput[dataoffset: dataoffset + 3]
             cmd["code"] = code
-            cmd["data"] = rawInput[dataoffset + 3 :][:-2]
+            cmd["data"] = rawInput[dataoffset + 3:][:-2]
 
             try:
                 # Interpret the login command further to see what our handler is.

@@ -1,7 +1,7 @@
-## Alarm Server
-## Supporting Envisalink 2DS/3
+# Alarm Server
+# Supporting Envisalink 2DS/3
 ##
-## This code is under the terms of the GPL v3 license.
+# This code is under the terms of the GPL v3 license.
 import ctypes
 
 c_uint16 = ctypes.c_uint16
