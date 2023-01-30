@@ -65,12 +65,6 @@ class EnvisalinkClient:
         if self._alarmPanel.zone_timer_interval > 0:
             self.create_internal_task(self.periodic_command(self.dump_zone_timers, self._alarmPanel.zone_timer_interval), name="zone_timer_dump")
 
-        if self._ownLoop:
-            _LOGGER.info("Starting up our own event loop.")
-            self._eventLoop.run_forever()
-            self._eventLoop.close()
-            _LOGGER.info("Connection shut down.")
-
     async def stop(self):
         """Public method for shutting down connectivity with the envisalink."""
         self._loggedin = False
@@ -120,7 +114,7 @@ class EnvisalinkClient:
                         _LOGGER.debug("{---------------------------------------")
                         _LOGGER.debug(str.format("RX < {0}", data))
 
-                        self.process_data(data)
+                        self.process_data(data.strip())
                         _LOGGER.debug("}---------------------------------------")
                 except Exception as ex:
                     _LOGGER.error("Caught unexpected exception: %r", ex)
