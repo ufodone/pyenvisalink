@@ -49,6 +49,7 @@ class EnvisalinkClient:
         self._commandEvent = asyncio.Event()
         self._commandQueue = []
         self._activeTasks = set()
+        self._terminator = b"\r\n"
 
     def create_internal_task(self, coro, name=None):
         task = self._eventLoop.create_task(coro, name=name)
@@ -112,7 +113,7 @@ class EnvisalinkClient:
                     while not self._shutdown and self._reader:
                         _LOGGER.debug("Waiting for data from EVL")
                         try:
-                            data = await asyncio.wait_for(self._reader.readuntil(separator=b"\n"), 5)
+                            data = await asyncio.wait_for(self._reader.readuntil(self._terminator), 5)
                         except asyncio.exceptions.TimeoutError:
                             continue
 
@@ -125,7 +126,7 @@ class EnvisalinkClient:
                         _LOGGER.debug("{---------------------------------------")
                         _LOGGER.debug(str.format("RX < {0}", data))
 
-                        self.process_data(data.strip())
+                        self.process_data(data)
                         _LOGGER.debug("}---------------------------------------")
                 except Exception as ex:
                     _LOGGER.error("Caught unexpected exception: %r", ex)
