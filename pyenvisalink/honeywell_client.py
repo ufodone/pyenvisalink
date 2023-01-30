@@ -1,11 +1,16 @@
-import asyncio
 import json
 import logging
 import re
 import time
 
 from .envisalink_base_client import EnvisalinkClient
-from .honeywell_envisalinkdefs import *
+from .honeywell_envisalinkdefs import (evl_ArmDisarm_CIDs, evl_CID_Events,
+                                       evl_CID_Qualifiers, evl_Commands,
+                                       evl_PanicTypes,
+                                       evl_Partition_Status_Codes,
+                                       evl_ResponseTypes,
+                                       evl_TPI_Response_Codes,
+                                       evl_Virtual_Keypad_How_To_Beep)
 
 _LOGGER = logging.getLogger(__name__)
 

@@ -1,11 +1,12 @@
-import asyncio
 import datetime
 import json
 import logging
 import re
 import time
 
-from .dsc_envisalinkdefs import *
+from .dsc_envisalinkdefs import (evl_ArmModes, evl_Commands, evl_PanicTypes,
+                                 evl_ResponseTypes, evl_TPI_Response_Codes,
+                                 evl_verboseTrouble)
 from .envisalink_base_client import EnvisalinkClient
 
 _LOGGER = logging.getLogger(__name__)
@@ -208,7 +209,7 @@ class DSCClient(EnvisalinkClient):
         """The DSC will, depending upon settings, challenge us with the code.  If the user passed it in, we'll send it."""
         self.create_internal_task(self.foo(), name="send_code")
 
-    async def send_code():
+    async def send_code(self):
         if self._cachedCode is None:
             _LOGGER.error("The envisalink asked for a code, but we have no code in our cache.")
         else:

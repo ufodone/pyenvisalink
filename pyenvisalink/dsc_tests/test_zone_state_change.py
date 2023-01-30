@@ -3,7 +3,7 @@ import logging
 import re
 
 from pyenvisalink import AlarmState
-from pyenvisalink.dsc_envisalinkdefs import *
+from pyenvisalink.dsc_envisalinkdefs import evl_ResponseTypes
 
 _LOGGER = logging.getLogger(__name__)
 

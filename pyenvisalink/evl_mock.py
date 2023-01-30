@@ -2,8 +2,6 @@ import asyncio
 import base64
 import logging
 import re
-import socket
-import time
 
 from mock_server_dsc import DscServer
 from mock_server_honeywell import HoneywellServer

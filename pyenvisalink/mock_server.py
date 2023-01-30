@@ -1,4 +1,3 @@
-import asyncio
 import logging
 
 from alarm_state import AlarmState
