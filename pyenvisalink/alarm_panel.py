@@ -231,7 +231,8 @@ class EnvisalinkAlarmPanel:
     def callback_zone_timer_dump(self, value):
         self._zoneTimerCallback = value
 
-    def _defaultCallback(self, data):
+    @staticmethod
+    def _defaultCallback(result, cmd, data, raw_data):
         """This is the callback that occurs when the client doesn't subscribe."""
         _LOGGER.debug("Callback has not been set by client.")
 

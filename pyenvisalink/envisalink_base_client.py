@@ -247,8 +247,8 @@ class EnvisalinkClient:
         """When the envisalink contacts us- parse out which command and data."""
         raise NotImplementedError()
 
-    def process_data(self, data) -> str:
-        cmd = self.parseHandler(data)
+    def process_data(self, raw_data) -> str:
+        cmd = self.parseHandler(raw_data)
 
         try:
             _LOGGER.debug(str.format("calling handler: {0} for code: {1} with data: {2}", cmd["handler"], cmd["code"], cmd["data"]))
@@ -262,7 +262,7 @@ class EnvisalinkClient:
         try:
             _LOGGER.debug(str.format("Invoking callback: {0}", cmd["callback"]))
             callbackFunc = getattr(self._alarmPanel, cmd["callback"])
-            callbackFunc(result)
+            callbackFunc(result=result, code=cmd["code"], data=cmd["data"], raw_data=raw_data)
 
         except (AttributeError, TypeError, KeyError):
             _LOGGER.debug("No callback configured for evl command.")
