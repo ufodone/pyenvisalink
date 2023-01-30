@@ -118,8 +118,8 @@ class HoneywellClient(EnvisalinkClient):
             _LOGGER.error("Unrecognized data recieved from the envisalink. Ignoring.")
             return None
         try:
-            cmd["handler"] = "handle_%s" % evl_ResponseTypes[code]["handler"]
-            cmd["callback"] = "callback_%s" % evl_ResponseTypes[code]["handler"]
+            cmd["handler"] = f"handle_{evl_ResponseTypes[code]['handler']}"
+            cmd["callback"] = f"callback_{evl_ResponseTypes[code]['handler']}"
         except KeyError:
             _LOGGER.warning(str.format("No handler defined in config for {0}, skipping...", code))
 

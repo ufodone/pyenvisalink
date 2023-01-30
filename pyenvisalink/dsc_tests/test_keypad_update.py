@@ -1,9 +1,9 @@
 import json
 import logging
-import re
 
 from pyenvisalink import AlarmState
-from pyenvisalink.dsc_envisalinkdefs import *
+from pyenvisalink.dsc_envisalinkdefs import (evl_ResponseTypes,
+                                             evl_verboseTrouble)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -14,17 +14,6 @@ loggingconfig = {
 }
 
 logging.basicConfig(**loggingconfig)
-evl_verboseTrouble = {
-    0: "Service is Required",
-    1: "AC Power Lost",
-    2: "Telephone Line Fault",
-    3: "Failure to communicate",
-    4: "Zone/Sensor Fault",
-    5: "Zone/Sensor Tamper",
-    6: "Zone/Sensor Low Battery",
-    7: "Loss of time",
-}
-
 
 alarmState = AlarmState.get_initial_alarm_state(64, 8)
 
@@ -32,7 +21,7 @@ alarmState = AlarmState.get_initial_alarm_state(64, 8)
 def handle_keypad_update(code, data):
     """Handle general- non partition based info"""
     if code == "849":
-        bits = "{0:016b}".format(int(data, 16))
+        bits = f"{int(data, 16):016b}"
         trouble_description = ""
         ac_present = True
         print(bits)

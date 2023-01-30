@@ -393,7 +393,7 @@ class EnvisalinkAlarmPanel:
             _LOGGER.error("Unable to fetch panel information: %s", ex)
             return self.ConnectionResult.CONNECTION_FAILED
 
-        _LOGGER.info(f"Discovered Envisalink %s: %s", self._evlVersion, self._panelType)
+        _LOGGER.info(f"Discovered Envisalink {self._evlVersion}: {self._panelType}")
         return True
 
     async def discover(self) -> ConnectionResult:
@@ -421,13 +421,13 @@ class EnvisalinkAlarmPanel:
 
                     m = re.search(fw_regex, html)
                     if m is None or m.lastindex != 1:
-                        _LOGGER.warn(f"# Unable to extract Firmware version")
+                        _LOGGER.warn("# Unable to extract Firmware version")
                     else:
                         self._firmwareVersion = m.group(1)
 
                     m = re.search(mac_regex, html)
                     if m is None or m.lastindex != 1:
-                        _LOGGER.warn(f"# Unable to extract MAC address")
+                        _LOGGER.warn("# Unable to extract MAC address")
                     else:
                         self._macAddress = m.group(1).lower()
         except Exception as ex:

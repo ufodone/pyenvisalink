@@ -25,7 +25,7 @@ class DSCClient(EnvisalinkClient):
 
     def get_checksum(self, code, data):
         """part of each command includes a checksum.  Calculate."""
-        return ("%02X" % sum(self.to_chars(code) + self.to_chars(data)))[-2:]
+        return (f"{sum(self.to_chars(code) + self.to_chars(data)):02X}")[-2:]
 
     async def send_command(self, code, data, logData=None):
         """Send a command in the proper honeywell format."""
@@ -99,12 +99,12 @@ class DSCClient(EnvisalinkClient):
                     elif cmd["data"] == "0":
                         handler = "login_failure"
 
-                    cmd["handler"] = "handle_%s" % handler
-                    cmd["callback"] = "callback_%s" % handler
+                    cmd["handler"] = f"handle_{handler}"
+                    cmd["callback"] = f"callback_{handler}"
 
                 else:
-                    cmd["handler"] = "handle_%s" % evl_ResponseTypes[code]["handler"]
-                    cmd["callback"] = "callback_%s" % evl_ResponseTypes[code]["handler"]
+                    cmd["handler"] = f"handle_{evl_ResponseTypes[code]['handler']}"
+                    cmd["callback"] = f"callback_{evl_ResponseTypes[code]['handler']}"
             except KeyError:
                 _LOGGER.debug(str.format("No handler defined in config for {0}, skipping...", code))
 

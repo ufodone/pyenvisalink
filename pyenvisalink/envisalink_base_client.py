@@ -1,14 +1,8 @@
 import asyncio
 import logging
 import re
-import threading
 import time
 from enum import Enum
-
-import aiohttp
-import async_timeout
-
-from .alarm_state import AlarmState
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -276,7 +270,7 @@ class EnvisalinkClient:
             callbackFunc = getattr(self._alarmPanel, cmd["callback"])
             callbackFunc(result)
 
-        except (AttributeError, TypeError, KeyError) as err:
+        except (AttributeError, TypeError, KeyError):
             _LOGGER.debug("No callback configured for evl command.")
 
     def convertZoneDump(self, theString):
@@ -486,7 +480,7 @@ class EnvisalinkClient:
             op = self._commandQueue[0]
             if op.state != self.Operation.State.SENT:
                 _LOGGER.error("Command/system error received when no command was issued.")
-            elif retry == False:
+            elif retry is False:
                 # No retry request so tag the command as failed
                 op.state = self.Operation.State.FAILED
             else:

@@ -88,7 +88,7 @@ class DscServer(MockServer):
         checksum = 0
         for ch in code + data:
             checksum = checksum + ord(ch)
-        return "%02X" % (checksum & 0xFF)
+        return f"{checksum & 255:02X}"
 
     def decode_command(self, line) -> (str, str):
         if len(line) < 5:
