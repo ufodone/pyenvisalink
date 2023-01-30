@@ -1,10 +1,12 @@
-import aiohttp
 import logging
 import re
 from enum import Enum
-from .honeywell_client import HoneywellClient
-from .dsc_client import DSCClient
+
+import aiohttp
+
 from .alarm_state import AlarmState
+from .dsc_client import DSCClient
+from .honeywell_client import HoneywellClient
 
 PANEL_TYPE_DSC = "DSC"
 PANEL_TYPE_HONEYWELL = "HONEYWELL"

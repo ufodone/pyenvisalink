@@ -1,13 +1,12 @@
 import asyncio
-import logging
-import json
-import re
-import asyncio
 import datetime
+import json
+import logging
+import re
 import time
-from .envisalink_base_client import EnvisalinkClient
-from .dsc_envisalinkdefs import *
 
+from .dsc_envisalinkdefs import *
+from .envisalink_base_client import EnvisalinkClient
 
 _LOGGER = logging.getLogger(__name__)
 

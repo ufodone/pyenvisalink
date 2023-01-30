@@ -3,6 +3,7 @@ import asyncio
 import logging
 import signal
 import sys
+
 from pyenvisalink import EnvisalinkAlarmPanel
 
 # This is a test harness for the pyenvisalink library.  It will assist in testing the library against both Honeywell and DSC.

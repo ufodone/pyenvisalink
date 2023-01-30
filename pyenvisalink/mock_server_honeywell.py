@@ -1,7 +1,7 @@
 import asyncio
 import logging
-import re
 import random
+import re
 
 from mock_server import MockServer
 

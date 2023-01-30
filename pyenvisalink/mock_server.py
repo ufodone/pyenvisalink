@@ -1,5 +1,6 @@
 import asyncio
 import logging
+
 from alarm_state import AlarmState
 
 log = logging.getLogger(__name__)

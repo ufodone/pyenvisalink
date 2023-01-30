@@ -1,8 +1,9 @@
-import logging
 import json
+import logging
 import re
-from pyenvisalink.dsc_envisalinkdefs import *
+
 from pyenvisalink import AlarmState
+from pyenvisalink.dsc_envisalinkdefs import *
 
 _LOGGER = logging.getLogger(__name__)
 

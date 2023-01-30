@@ -1,11 +1,13 @@
 import asyncio
-import async_timeout
-import threading
-import time
 import logging
 import re
-import aiohttp
+import threading
+import time
 from enum import Enum
+
+import aiohttp
+import async_timeout
+
 from .alarm_state import AlarmState
 
 _LOGGER = logging.getLogger(__name__)
