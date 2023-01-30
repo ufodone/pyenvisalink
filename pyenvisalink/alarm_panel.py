@@ -373,7 +373,7 @@ class EnvisalinkAlarmPanel:
 
                 # Try and scrape the HTML for the EVL version and panel type
                 html = await resp.text()
-                version_regex = "<TITLE>Envisalink ([0-9])<\/TITLE>"
+                version_regex = r"<TITLE>Envisalink ([0-9])<\/TITLE>"
 
                 m = re.search(version_regex, html)
                 if m is None or m.lastindex != 1:

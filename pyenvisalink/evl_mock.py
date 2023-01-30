@@ -86,7 +86,7 @@ async def handle_http_client(client_reader, client_writer):
     data = data.decode()
     log.info("%s", data)
 
-    m = re.search("Authorization: Basic ([a-zA-Z0-9\+/=]+)", data)
+    m = re.search(r"Authorization: Basic ([a-zA-Z0-9\+/=]+)", data)
     if not m or m.group(1) != key:
         response = "HTTP/1.1 401 Authorization Required\r\n"
         response += "Connection: close\r\n"

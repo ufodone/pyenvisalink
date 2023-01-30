@@ -82,7 +82,7 @@ class DSCClient(EnvisalinkClient):
         cmd = {}
         dataoffset = 0
         if rawInput != "":
-            if re.match("\d\d:\d\d:\d\d\s", rawInput):
+            if re.match(r"\d\d:\d\d:\d\d\s", rawInput):
                 dataoffset = dataoffset + 9
             code = rawInput[dataoffset : dataoffset + 3]
             cmd["code"] = code
@@ -219,7 +219,7 @@ class DSCClient(EnvisalinkClient):
     def handle_keypad_update(self, code, data):
         """Handle general- non partition based info"""
         if code == "849":
-            bits = "{0:016b}".format(int(data, 16))
+            bits = f"{int(data, 16):016b}"
             trouble_description = ""
             ac_present = True
             for i in range(0, 7):

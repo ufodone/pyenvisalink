@@ -69,7 +69,7 @@ class HoneywellServer(MockServer):
         return True
 
     def decode_command(self, line) -> (str, str):
-        m = re.search("\^(..),([^\$]*)\$", line)
+        m = re.search(r"\^(..),([^\$]*)\$", line)
         if m:
             cmd = m.group(1)
             data = None
