@@ -73,7 +73,7 @@ class DscServer(MockServer):
         elif cmd == "200":  # Send Code
             success = await self.receive_code()
         else:
-            log.info(f"Unhandled command ({cmd}); data: {data}")
+            log.info("Unhandled command (%s); data: %s", cmd, data)
             return False
 
         return success
@@ -97,11 +97,11 @@ class DscServer(MockServer):
         cmd = line[:3]
         data = line[3:-2]
         checksum = line[-2:]
-        log.info(f"cmd='{cmd}' data='{data}' checksum='{checksum}'")
+        log.info("cmd='%s' data='%s' checksum='%s'", cmd, data, checksum)
 
         valid_checksum = self.get_checksum(cmd, data)
         if checksum != valid_checksum:
-            log.error(f"Invalid checksum ({valid_checksum}) for command: '{line}'")
+            log.error("Invalid checksum (%s) for command: '%s'", valid_checksum, line)
             return None
 
         return (cmd, data)
@@ -111,7 +111,7 @@ class DscServer(MockServer):
         return f"{cmd}{data}{checksum}\r\n"
 
     async def send_response(self, response):
-        log.info(f"send: {response}")
+        log.info("send: %s", response)
         await self.write_raw(response)
 
     def encode_zone_timers(self) -> str:
@@ -122,7 +122,7 @@ class DscServer(MockServer):
 
     async def dump_zone_timers(self) -> bool:
         response = self.encode_command("500", "008")
-        log.info(f"send: {response}")
+        log.info("send: %s", response)
         await self.send_response(response)
 
         await self.send_response(self.encode_zone_timers())
@@ -152,7 +152,7 @@ class DscServer(MockServer):
         response = self.encode_command("500", "005")
 
         if data != self._password:
-            log.error(f"Invalid password: {data}")
+            log.error("Invalid password: %s", data)
             response += self.encode_command("505", "0")
             await self.send_response(response)
             return False

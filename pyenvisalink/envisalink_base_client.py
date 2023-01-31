@@ -397,7 +397,7 @@ class EnvisalinkClient:
                 timeout = self._alarmPanel.command_timeout
 
                 while self._commandQueue:
-                    _LOGGER.debug(f"Checking command queue: len={len(self._commandQueue)}")
+                    _LOGGER.debug("Checking command queue: len=%s", len(self._commandQueue))
                     op = self._commandQueue[0]
                     timeout = op.expiryTime - now
 
@@ -407,7 +407,7 @@ class EnvisalinkClient:
                             # Timeout waiting for response from the EVL so fail the command,
                             # This is likely due to the EVL becoming unresponsive so tear down the
                             # connection to start a recovery.
-                            _LOGGER.error(f"Command '{op.cmd}' failed due to timeout waiting for response from EVL")
+                            _LOGGER.error("Command '%s' failed due to timeout waiting for response from EVL", op.cmd)
                             op.state = self.Operation.State.FAILED
                             await self.disconnect()
                         break
@@ -418,7 +418,7 @@ class EnvisalinkClient:
                         try:
                             await self.send_command(op.cmd, op.data, op.logData)
                         except Exception as ex:
-                            _LOGGER.error(f"Unexpected exception trying to send command: {ex}")
+                            _LOGGER.error("Unexpected exception trying to send command: %s", ex)
                             op.state = self.Operation.State.FAILED
                     elif op.state == self.Operation.State.SUCCEEDED:
                         # Remove completed command from head of the queue
@@ -445,10 +445,10 @@ class EnvisalinkClient:
                 except asyncio.exceptions.TimeoutError:
                     pass
                 except Exception as ex:
-                    _LOGGER.error(f"Command processor woke up due unexpected exception {ex}")
+                    _LOGGER.error("Command processor woke up due unexpected exception %s", ex)
 
             except Exception as ex:
-                _LOGGER.error(f"Command processor caught unexpected exception {ex}")
+                _LOGGER.error("Command processor caught unexpected exception %s", ex)
 
         _LOGGER.info("Command processing task exited.")
 
@@ -458,11 +458,11 @@ class EnvisalinkClient:
         if self._commandQueue:
             op = self._commandQueue[0]
             if cmd and op.cmd != cmd:
-                _LOGGER.error(f"Command acknowledgement received is different for a different command ({cmd}) than was issued ({op.cmd})")
+                _LOGGER.error("Command acknowledgement received is different for a different command (%s) than was issued (%s)", cmd, op.cmd)
             else:
                 op.state = self.Operation.State.SUCCEEDED
         else:
-            _LOGGER.error(f"Command acknowledgement received for '{cmd}' when no command was issued.")
+            _LOGGER.error("Command acknowledgement received for '%s' when no command was issued.", cmd)
 
         # Wake up the command processing task to process this result
         self._commandEvent.set()
@@ -489,7 +489,7 @@ class EnvisalinkClient:
                     # Tag the command to be retried in the future by the command processor task
                     op.state = self.Operation.State.RETRY
                     op.retryTime = time.time() + op.retryDelay
-                    _LOGGER.warn(f"Command '{op.cmd} {op.data}' failed; retry in {op.retryDelay} seconds.")
+                    _LOGGER.warn("Command '%s %s' failed; retry in %s seconds.", op.cmd, op.data, op.retryDelay)
         else:
             _LOGGER.error("Command/system error received when no command is active.")
 

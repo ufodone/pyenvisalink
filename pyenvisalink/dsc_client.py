@@ -150,7 +150,7 @@ class DSCClient(EnvisalinkClient):
                     _LOGGER.error(msg)
 
             else:
-                _LOGGER.error(f"Unrecognized system error for issued command: '{data}'")
+                _LOGGER.error("Unrecognized system error for issued command: '%s'", data)
             self.command_failed(retry=retry)
 
     def handle_zone_state_change(self, code, data):

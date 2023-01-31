@@ -19,7 +19,7 @@ evl_server = None
 
 
 def accept_client(client_reader, client_writer):
-    log.info(f"Accepted connection: client_reader={client_reader}, client_writer={client_writer}")
+    log.info("Accepted connection: client_reader=%s, client_writer=%s", client_reader, client_writer)
     task = asyncio.Task(handle_client(client_reader, client_writer))
     clients[task] = (client_reader, client_writer)
 
@@ -36,7 +36,7 @@ async def handle_client(client_reader, client_writer):
     global conns_open
 
     if conns_open > 0:
-        log.info(f"Already have {conns_open} conns open.  Closing new conn.")
+        log.info("Already have %s conns open.  Closing new conn.", conns_open)
         return
     conns_open += 1
 
@@ -62,7 +62,7 @@ async def handle_client(client_reader, client_writer):
                 continue
 
             sdata = data.decode().rstrip()
-            log.info(f"recv: {sdata}")
+            log.info("recv: %s", sdata)
             if len(sdata) == 0:
                 # connection was closed
                 break
@@ -74,7 +74,7 @@ async def handle_client(client_reader, client_writer):
 
     conns_open -= 1
     await evl_server.disconnected()
-    log.info(f"Exiting reader loop; conns_open={conns_open}")
+    log.info("Exiting reader loop; conns_open=%s", conns_open)
 
 
 async def handle_http_client(client_reader, client_writer):
@@ -127,16 +127,16 @@ async def handle_cli_client(client_reader, client_writer):
             break
 
         cmd = sdata.split(":")
-        log.info(f"{cmd}")
+        log.info("%s", cmd)
 
         if cmd[0] == "write":
             evl_server.write_raw(cmd[1])
 
-    log.info(f"Exiting reader loop; conns_open={conns_open}")
+    log.info("Exiting reader loop; conns_open=%s", conns_open)
 
 
 def accept_http_client(client_reader, client_writer):
-    log.info(f"Accepted connection on http endpoint: client_reader={client_reader}, client_writer={client_writer}")
+    log.info("Accepted connection on http endpoint: client_reader=%s, client_writer=%s", client_reader, client_writer)
     task = asyncio.Task(handle_http_client(client_reader, client_writer))
     clients[task] = (client_reader, client_writer)
 
@@ -150,7 +150,7 @@ def accept_http_client(client_reader, client_writer):
 
 
 def accept_cli_client(client_reader, client_writer):
-    log.info(f"Accepted connection on cli endpoint: client_reader={client_reader}, client_writer={client_writer}")
+    log.info("Accepted connection on cli endpoint: client_reader=%s, client_writer=%s", client_reader, client_writer)
     task = asyncio.Task(handle_cli_client(client_reader, client_writer))
     clients[task] = (client_reader, client_writer)
 

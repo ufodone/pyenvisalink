@@ -57,7 +57,7 @@ class HoneywellServer(MockServer):
         elif cmd == CMD_KEYPRESS_TO_PARTITION:  # Keypress to specific partition
             success = await self.handle_keystroke_sequence()
         else:
-            log.info(f"Unhandled command ({cmd}); data: {data}")
+            log.info("Unhandled command (%s); data: %s", cmd, data)
             return False
 
         return success
@@ -80,7 +80,7 @@ class HoneywellServer(MockServer):
             cmd = CMD_KEYSTROKE
             data = line
 
-        log.info(f"cmd='{cmd}' data='{data}'")
+        log.info("cmd='%s' data='%s'", cmd, data)
         return (cmd, data)
 
     def encode_command(self, cmd, data) -> str:
@@ -93,7 +93,7 @@ class HoneywellServer(MockServer):
         await self.send_response(f"%{cmd},{data}$")
 
     async def send_response(self, response):
-        log.info(f"send: {response}")
+        log.info("send: %s", response)
         await self.write_raw(f"{response}\r\n")
 
     def encode_zone_timers(self) -> str:
@@ -116,7 +116,7 @@ class HoneywellServer(MockServer):
 
     async def login(self, data) -> bool:
         if data != self._password:
-            log.error(f"Invalid password: {data}")
+            log.error("Invalid password: %s", data)
             await self.send_response("FAILED")
             return False
 

@@ -394,7 +394,7 @@ class EnvisalinkAlarmPanel:
             _LOGGER.error("Unable to fetch panel information: %s", ex)
             return self.ConnectionResult.CONNECTION_FAILED
 
-        _LOGGER.info(f"Discovered Envisalink {self._evlVersion}: {self._panelType}")
+        _LOGGER.info("Discovered Envisalink %s: %s", self._evlVersion, self._panelType)
         return True
 
     async def discover(self) -> ConnectionResult:
@@ -437,6 +437,6 @@ class EnvisalinkAlarmPanel:
 
         await self.discover_device_details()
 
-        _LOGGER.info(f"Firmware Version: '{self._firmwareVersion}' / MAC address: '{self._macAddress}'")
+        _LOGGER.info("Firmware Version: '%s' / MAC address: '%s'", self._firmwareVersion, self._macAddress)
         self._discoveryComplete = True
         return self.ConnectionResult.SUCCESS
