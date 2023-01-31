@@ -1,1 +1,6 @@
 async-timeout
+flake8-comprehensions
+flake8-isort
+flake8-noqa
+flake8
+isort
