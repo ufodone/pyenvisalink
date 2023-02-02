@@ -185,7 +185,7 @@ class EnvisalinkClient:
         _LOGGER.debug("TX > %s", logData.encode("ascii"))
 
         try:
-            self._writer.write((data + "\r\n").encode("ascii"))
+            self._writer.write((data + self._terminator).encode("ascii"))
             await self._writer.drain()
         except Exception as err:
             _LOGGER.error("Failed to write to the stream: %r", err)
