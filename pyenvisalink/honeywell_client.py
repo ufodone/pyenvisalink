@@ -4,9 +4,9 @@ import re
 import time
 
 from .envisalink_base_client import EnvisalinkClient
-from .honeywell_envisalinkdefs import (evl_ArmDisarm_CIDs, evl_CID_Events,
-                                       evl_CID_Qualifiers, evl_Commands,
-                                       evl_PanicTypes,
+from .honeywell_envisalinkdefs import (IconLED_Flags, evl_ArmDisarm_CIDs,
+                                       evl_CID_Events, evl_CID_Qualifiers,
+                                       evl_Commands, evl_PanicTypes,
                                        evl_Partition_Status_Codes,
                                        evl_ResponseTypes,
                                        evl_TPI_Response_Codes,
@@ -146,7 +146,7 @@ class HoneywellClient(EnvisalinkClient):
                 self.command_succeeded(code[1:])
             else:
                 _LOGGER.error("error sending command to envisalink.  Response was: " + responseInfo["msg"])
-                self.command_failed(retry=errorInfo["retry"])
+                self.command_failed(retry=responseInfo['retry'])
         else:
             _LOGGER.error(str.format("Unrecognized response code ({0}) received", data))
             self.command_failed(retry=False)

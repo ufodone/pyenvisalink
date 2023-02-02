@@ -58,6 +58,7 @@ class EnvisalinkAlarmPanel:
         self._zoneBypassEnabled = zoneBypassEnabled
         self._commandTimeout = commandTimeout
 
+        self._connectionStatusCallback = self._defaultCallback
         self._loginSuccessCallback = self._defaultCallback
         self._loginFailureCallback = self._defaultCallback
         self._loginTimeoutCallback = self._defaultCallback
@@ -82,6 +83,10 @@ class EnvisalinkAlarmPanel:
         return self._port
 
     @property
+    def httpPort(self):
+        return self._httpPort
+
+    @ property
     def connection_timeout(self):
         return self._connectionTimeout
 
@@ -146,6 +151,14 @@ class EnvisalinkAlarmPanel:
     @property
     def max_partitions(self):
         return self._maxPartitions
+
+    @property
+    def callback_connection_status(self):
+        return self._connectionStatusCallback
+
+    @callback_connection_status.setter
+    def callback_connection_status(self, value):
+        self._connectionStatusCallback = value
 
     @property
     def callback_login(self):
@@ -232,7 +245,7 @@ class EnvisalinkAlarmPanel:
         self._zoneTimerCallback = value
 
     @staticmethod
-    def _defaultCallback(result, cmd, data, raw_data):
+    def _defaultCallback(result, cmd=None, data=None, raw_data=None):
         """This is the callback that occurs when the client doesn't subscribe."""
         _LOGGER.debug("Callback has not been set by client.")
 
@@ -440,3 +453,8 @@ class EnvisalinkAlarmPanel:
         _LOGGER.info("Firmware Version: '%s' / MAC address: '%s'", self._firmwareVersion, self._macAddress)
         self._discoveryComplete = True
         return self.ConnectionResult.SUCCESS
+
+    def is_online(self):
+        if not self._client:
+            return False
+        return self._client.is_online()
