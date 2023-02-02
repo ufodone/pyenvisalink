@@ -168,6 +168,8 @@ class EnvisalinkClient:
             coro = asyncio.open_connection(self._alarmPanel.host, self._alarmPanel.port)
             self._reader, self._writer = await asyncio.wait_for(coro, self._alarmPanel.connection_timeout)
             _LOGGER.info("Connection Successful!")
+
+            self._alarmPanel.callback_connection_status(True)
         except Exception as ex:
             self._loggedin = False
             if not self._shutdown:
@@ -195,6 +197,8 @@ class EnvisalinkClient:
 
         self._writer = None
         self._reader = None
+
+        self._alarmPanel.callback_connection_status(False)
             
     async def send_data(self, data, logData = None):
         """Raw data send- just make sure it's encoded properly and logged."""
@@ -532,4 +536,8 @@ class EnvisalinkClient:
         if code:
             logData = logData.replace(code, "*" * len(code))
         return logData
+
+    def is_online(self) -> bool:
+        """Indicate whether we are connected and successfully logged into the EVL"""
+        return self._loggedin
 
