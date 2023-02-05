@@ -20,3 +20,4 @@ todo
 __pycache__
 
 .idea/
+*.swp
