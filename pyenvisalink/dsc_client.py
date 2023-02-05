@@ -175,7 +175,9 @@ class DSCClient(EnvisalinkClient):
         parse = re.match("^[0-9]{3,4}$", data)
         if parse:
             zoneNumber = int(data[-3:])
-            self._alarmPanel.alarm_state["zone"][zoneNumber]["status"].update(evl_ResponseTypes[code]["status"])
+            self._alarmPanel.alarm_state["zone"][zoneNumber]["status"].update(
+                evl_ResponseTypes[code]["status"]
+            )
             self._alarmPanel.alarm_state["zone"][zoneNumber]["updated"] = now
             _LOGGER.debug(
                 str.format(
@@ -189,13 +191,16 @@ class DSCClient(EnvisalinkClient):
             _LOGGER.error("Invalid data has been passed in the zone update.")
 
     def handle_partition_state_change(self, code, data):
-        """Handle when the envisalink sends us a partition change."""
-        """Event 650-674, 652 is an exception, because 2 bytes are passed for partition and zone type."""
+        """Handle when the envisalink sends us a partition change.
+        Event 650-674, 652 is an exception, because 2 bytes are passed for partition
+        and zone type."""
         if code == "652":
             parse = re.match("^[0-9]{2}$", data)
             if parse:
                 partitionNumber = int(data[0])
-                self._alarmPanel.alarm_state["partition"][partitionNumber]["status"].update(evl_ArmModes[data[1]]["status"])
+                self._alarmPanel.alarm_state["partition"][partitionNumber]["status"].update(
+                    evl_ArmModes[data[1]]["status"]
+                )
                 _LOGGER.debug(
                     str.format(
                         "(partition {0}) state has updated: {1}",
@@ -210,7 +215,9 @@ class DSCClient(EnvisalinkClient):
             parse = re.match("^[0-9]+$", data)
             if parse:
                 partitionNumber = int(data[0])
-                self._alarmPanel.alarm_state["partition"][partitionNumber]["status"].update(evl_ResponseTypes[code]["status"])
+                self._alarmPanel.alarm_state["partition"][partitionNumber]["status"].update(
+                    evl_ResponseTypes[code]["status"]
+                )
                 _LOGGER.debug(
                     str.format(
                         "(partition {0}) state has updated: {1}",
@@ -222,21 +229,29 @@ class DSCClient(EnvisalinkClient):
                 """Log the user who last armed or disarmed the alarm"""
                 if code == "700":
                     lastArmedBy = {"last_armed_by_user": int(data[1:5])}
-                    self._alarmPanel.alarm_state["partition"][partitionNumber]["status"].update(lastArmedBy)
+                    self._alarmPanel.alarm_state["partition"][partitionNumber]["status"].update(
+                        lastArmedBy
+                    )
                 elif code == "750":
                     lastDisarmedBy = {"last_disarmed_by_user": int(data[1:5])}
-                    self._alarmPanel.alarm_state["partition"][partitionNumber]["status"].update(lastDisarmedBy)
+                    self._alarmPanel.alarm_state["partition"][partitionNumber]["status"].update(
+                        lastDisarmedBy
+                    )
 
                 if code == "655" and self._alarmPanel._zoneBypassEnabled:
-                    """Partition was disarmed which means the bypassed zones have likley been reset so force a zone bypass refresh"""
-                    self.create_internal_task(self.dump_zone_bypass_status(), name="dump_zone_bypass_status")
+                    """Partition was disarmed which means the bypassed zones have likley been
+                    reset so force a zone bypass refresh"""
+                    self.create_internal_task(
+                        self.dump_zone_bypass_status(), name="dump_zone_bypass_status"
+                    )
 
                 return [partitionNumber]
             else:
-                _LOGGER.error("Invalid data has been passed in the parition update.")
+                _LOGGER.error("Invalid data has been passed in the partition update.")
 
     def handle_send_code(self, code, data):
-        """The DSC will, depending upon settings, challenge us with the code.  If the user passed it in, we'll send it."""
+        """The DSC will, depending upon settings, challenge us with the code.  If the user
+        passed it in, we'll send it."""
         self.create_internal_task(self.foo(), name="send_code")
 
     async def send_code(self):
@@ -304,8 +319,9 @@ class DSCClient(EnvisalinkClient):
 
     async def dump_zone_bypass_status(self):
         """Trigger a 616 'Bypassed Zones Bitfield Dump' to initialize the bypass state.
-        There is unfortunately not a specific command to request a zone bypass dump so the *1# keypresses are sent instead.
-        It appears that limitations in the envisalink API (or perhaps the panel itself) makes it impossible for this feature
+        There is unfortunately not a specific command to request a zone bypass dump so
+        the *1# keypresses are sent instead.  It appears that limitations in the envisalink
+        API (or perhaps the panel itself) makes it impossible for this feature
         to work if the alarm panel is setup to require a code to bypass zones."""
         await self.keypresses_to_partition(1, "*1#")
 

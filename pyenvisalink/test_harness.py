@@ -4,7 +4,8 @@ import sys
 
 from pyenvisalink.alarm_panel import EnvisalinkAlarmPanel
 
-# This is a test harness for the pyenvisalink library.  It will assist in testing the library against both Honeywell and DSC.
+# This is a test harness for the pyenvisalink library.
+# It will assist in testing the library against both Honeywell and DSC.
 
 
 async def shutdown_handler(testpanel):

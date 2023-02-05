@@ -388,7 +388,9 @@ class EnvisalinkAlarmPanel:
         self._panelType = None
 
         try:
-            async with aiohttp.ClientSession(auth=aiohttp.BasicAuth(self._username, self._password)) as client:
+            async with aiohttp.ClientSession(
+                auth=aiohttp.BasicAuth(self._username, self._password)
+            ) as client:
                 url = f"http://{self._host}:{self._httpPort}/2"
                 resp = await client.get(url)
                 if resp.status != 200:
@@ -428,7 +430,9 @@ class EnvisalinkAlarmPanel:
         self._firmwareVersion = None
 
         try:
-            async with aiohttp.ClientSession(auth=aiohttp.BasicAuth(self._username, self._password)) as client:
+            async with aiohttp.ClientSession(
+                auth=aiohttp.BasicAuth(self._username, self._password)
+            ) as client:
                 url = f"http://{self._host}:{self._httpPort}/3"
                 resp = await client.get(url)
                 if resp.status == 401:
@@ -437,7 +441,10 @@ class EnvisalinkAlarmPanel:
                 elif resp.status == 404:
                     # Connection was successful but unable to extract FW and MAC info
                     _LOGGER.warn(
-                        "Connection successful but unable to fetch FW/MAC: 404 (page not found): '%s'",
+                        (
+                            "Connection successful but unable to fetch FW/MAC: "
+                            "404 (page not found): '%s'"
+                        ),
                         url,
                     )
                 elif resp.status != 200:
@@ -469,7 +476,9 @@ class EnvisalinkAlarmPanel:
 
         await self.discover_device_details()
 
-        _LOGGER.info(f"Firmware Version: '{self._firmwareVersion}' / MAC address: '{self._macAddress}'")
+        _LOGGER.info(
+            f"Firmware Version: '{self._firmwareVersion}' / MAC address: '{self._macAddress}'"
+        )
         self._discoveryComplete = True
         return self.ConnectionResult.SUCCESS
 

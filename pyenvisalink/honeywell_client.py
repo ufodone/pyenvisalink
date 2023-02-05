@@ -150,7 +150,9 @@ class HoneywellClient(EnvisalinkClient):
             if data == "00":
                 self.command_succeeded(code[1:])
             else:
-                _LOGGER.error("error sending command to envisalink.  Response was: " + responseInfo["msg"])
+                _LOGGER.error(
+                    "error sending command to envisalink.  Response was: " + responseInfo["msg"]
+                )
                 self.command_failed(retry=responseInfo["retry"])
         else:
             _LOGGER.error(str.format("Unrecognized response code ({0}) received", data))
@@ -195,7 +197,9 @@ class HoneywellClient(EnvisalinkClient):
                 "beep": beep,
             }
         )
-        _LOGGER.debug(json.dumps(self._alarmPanel.alarm_state["partition"][partitionNumber]["status"]))
+        _LOGGER.debug(
+            json.dumps(self._alarmPanel.alarm_state["partition"][partitionNumber]["status"])
+        )
 
     def handle_zone_state_change(self, code, data):
         """Handle when the envisalink sends us a zone change."""
@@ -229,7 +233,9 @@ class HoneywellClient(EnvisalinkClient):
 
         now = time.time()
         for zoneNumber, zoneBit in enumerate(zonefieldString, start=1):
-            self._alarmPanel.alarm_state["zone"][zoneNumber]["status"].update({"open": zoneBit == "1", "fault": zoneBit == "1"})
+            self._alarmPanel.alarm_state["zone"][zoneNumber]["status"].update(
+                {"open": zoneBit == "1", "fault": zoneBit == "1"}
+            )
             if zoneBit == "1":
                 self._alarmPanel.alarm_state["zone"][zoneNumber]["last_fault"] = 0
             self._alarmPanel.alarm_state["zone"][zoneNumber]["updated"] = now
@@ -246,7 +252,9 @@ class HoneywellClient(EnvisalinkClient):
             partitionStateCode = data[currentIndex * 2 : (currentIndex * 2) + 2]
             partitionState = evl_Partition_Status_Codes[str(partitionStateCode)]
             partitionNumber = currentIndex + 1
-            previouslyArmed = self._alarmPanel.alarm_state["partition"][partitionNumber]["status"].get("armed", False)
+            previouslyArmed = self._alarmPanel.alarm_state["partition"][partitionNumber][
+                "status"
+            ].get("armed", False)
             armed = partitionState["name"] in ("ARMED_STAY", "ARMED_AWAY", "ARMED_MAX")
             self._alarmPanel.alarm_state.update(
                 {
@@ -257,17 +265,30 @@ class HoneywellClient(EnvisalinkClient):
             )
             self._alarmPanel.alarm_state["partition"][partitionNumber]["status"].update(
                 {
-                    "exit_delay": bool(partitionState["name"] == "EXIT_ENTRY_DELAY" and not previouslyArmed),
-                    "entry_delay": bool(partitionState["name"] == "EXIT_ENTRY_DELAY" and previouslyArmed),
+                    "exit_delay": bool(
+                        partitionState["name"] == "EXIT_ENTRY_DELAY" and not previouslyArmed
+                    ),
+                    "entry_delay": bool(
+                        partitionState["name"] == "EXIT_ENTRY_DELAY" and previouslyArmed
+                    ),
                     "armed": armed,
-                    "ready": bool(partitionState["name"] == "READY" or partitionState["name"] == "READY_BYPASS"),
+                    "ready": bool(
+                        partitionState["name"] == "READY"
+                        or partitionState["name"] == "READY_BYPASS"
+                    ),
                 }
             )
 
             if partitionState["name"] == "NOT_READY":
-                self._alarmPanel.alarm_state["partition"][partitionNumber]["status"].update({"ready": False})
-            _LOGGER.debug("Parition " + str(partitionNumber) + " is in state " + partitionState["name"])
-            _LOGGER.debug(json.dumps(self._alarmPanel.alarm_state["partition"][partitionNumber]["status"]))
+                self._alarmPanel.alarm_state["partition"][partitionNumber]["status"].update(
+                    {"ready": False}
+                )
+            _LOGGER.debug(
+                "Partition " + str(partitionNumber) + " is in state " + partitionState["name"]
+            )
+            _LOGGER.debug(
+                json.dumps(self._alarmPanel.alarm_state["partition"][partitionNumber]["status"])
+            )
 
     def handle_realtime_cid_event(self, code, data):
         """Handle when the envisalink sends us an alarm arm/disarm/trigger."""
@@ -279,9 +300,13 @@ class HoneywellClient(EnvisalinkClient):
         zoneOrUser = int(data[6:9])
         if cidEventInt in evl_ArmDisarm_CIDs:
             if eventTypeInt == 1:
-                self._alarmPanel.alarm_state["partition"][partitionNumber]["status"].update({"last_disarmed_by_user": zoneOrUser})
+                self._alarmPanel.alarm_state["partition"][partitionNumber]["status"].update(
+                    {"last_disarmed_by_user": zoneOrUser}
+                )
             if eventTypeInt == 3:
-                self._alarmPanel.alarm_state["partition"][partitionNumber]["status"].update({"last_armed_by_user": zoneOrUser})
+                self._alarmPanel.alarm_state["partition"][partitionNumber]["status"].update(
+                    {"last_armed_by_user": zoneOrUser}
+                )
 
         _LOGGER.debug("Event Type is " + eventType)
         _LOGGER.debug("CID Type is " + cidEvent["type"])

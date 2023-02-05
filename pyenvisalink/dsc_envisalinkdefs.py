@@ -306,7 +306,7 @@ evl_TPI_Response_Codes = {
     "000": {"retry": False, "msg": "No Error"},
     "001": {
         "retry": True,
-        "msg": "Receive Buffer Overrun (a command is received while another is still being processed)",
+        "msg": "Receive Buffer Overrun (a command is received while another is still being processed)",  # noqa: E501
     },
     "002": {"retry": True, "msg": "Receive Buffer Overflow"},
     "003": {"retry": False, "msg": "Transmit Buffer Overflow"},
@@ -316,7 +316,7 @@ evl_TPI_Response_Codes = {
     "013": {"retry": False, "msg": "Keybus Transmit Keystring Timeout"},
     "014": {
         "retry": False,
-        "msg": "Keybus Interface Not Functioning (the TPI cannot communicate with the security system)",
+        "msg": "Keybus Interface Not Functioning (the TPI cannot communicate with the security system)",  # noqa: E501
     },
     "015": {
         "retry": False,
@@ -324,11 +324,11 @@ evl_TPI_Response_Codes = {
     },
     "016": {
         "retry": False,
-        "msg": "Keybus Busy – Lockout (The panel is currently in Keypad Lockout – too many disarm attempts)",
+        "msg": "Keybus Busy – Lockout (The panel is currently in Keypad Lockout – too many disarm attempts)",  # noqa: E501
     },
     "017": {
         "retry": False,
-        "msg": "Keybus Busy – Installers Mode (Panel is in installers mode, most functions are unavailable)",
+        "msg": "Keybus Busy – Installers Mode (Panel is in installers mode, most functions are unavailable)",  # noqa: E501
     },
     "018": {
         "retry": False,
@@ -346,12 +346,12 @@ evl_TPI_Response_Codes = {
     },
     "024": {
         "retry": False,
-        "msg": "API System Not Ready to Arm (system is either not-secure, in exit-delay, or already armed)",
+        "msg": "API System Not Ready to Arm (system is either not-secure, in exit-delay, or already armed)",  # noqa: E501
     },
     "025": {"retry": False, "msg": "API Command Invalid Length"},
     "026": {"retry": False, "msg": "API User Code not Required"},
     "027": {
         "retry": False,
-        "msg": "API Invalid Characters in Command (no alpha characters are allowed except for checksum)",
+        "msg": "API Invalid Characters in Command (no alpha characters are allowed except for checksum)",  # noqa: E501
     },
 }

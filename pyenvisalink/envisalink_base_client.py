@@ -63,7 +63,9 @@ class EnvisalinkClient:
     def start(self):
         """Public method for initiating connectivity with the envisalink."""
         self._shutdown = False
-        self._commandTask = self.create_internal_task(self.process_command_queue(), name="command_processor")
+        self._commandTask = self.create_internal_task(
+            self.process_command_queue(), name="command_processor"
+        )
         self._readLoopTask = self.create_internal_task(self.read_loop(), name="read_loop")
 
         if self._alarmPanel.keepalive_interval > 0:
@@ -102,7 +104,9 @@ class EnvisalinkClient:
             _LOGGER.info("Shutting down Envisalink client connection...")
             self._eventLoop.call_soon_threadsafe(self._eventLoop.stop)
         else:
-            _LOGGER.info("An event loop was given to us- we will shutdown when that event loop shuts down.")
+            _LOGGER.info(
+                "An event loop was given to us- we will shutdown when that event loop shuts down."
+            )
 
     async def read_loop(self):
         """Internal method handling connecting to the EVL and consuming data from it."""
@@ -120,7 +124,9 @@ class EnvisalinkClient:
                     while not self._shutdown and self._reader:
                         _LOGGER.debug("Waiting for data from EVL")
                         try:
-                            data = await asyncio.wait_for(self._reader.readuntil(separator=b"\n"), 5)
+                            data = await asyncio.wait_for(
+                                self._reader.readuntil(separator=b"\n"), 5
+                            )
                         except asyncio.exceptions.TimeoutError:
                             continue
 
@@ -148,7 +154,8 @@ class EnvisalinkClient:
         await self.disconnect()
 
     async def periodic_command(self, action, interval):
-        """Used to periodically send a keepalive command to reset the envisalink's watchdog timer."""
+        """Used to periodically send a keepalive command to reset the envisalink's
+        watchdog timer."""
         while not self._shutdown:
             next_send = time.time() + interval
 
@@ -168,7 +175,9 @@ class EnvisalinkClient:
         )
         try:
             coro = asyncio.open_connection(self._alarmPanel.host, self._alarmPanel.port)
-            self._reader, self._writer = await asyncio.wait_for(coro, self._alarmPanel.connection_timeout)
+            self._reader, self._writer = await asyncio.wait_for(
+                coro, self._alarmPanel.connection_timeout
+            )
             _LOGGER.info("Connection Successful!")
 
             self._alarmPanel.callback_connection_status(True)
@@ -385,7 +394,9 @@ class EnvisalinkClient:
                 # State changed so add to result list
                 results.append(zoneNumber)
 
-            self._alarmPanel.alarm_state["zone"][zoneNumber]["status"].update({"open": newOpen, "fault": newFault})
+            self._alarmPanel.alarm_state["zone"][zoneNumber]["status"].update(
+                {"open": newOpen, "fault": newFault}
+            )
             self._alarmPanel.alarm_state["zone"][zoneNumber]["last_fault"] = zoneInfo["seconds"]
             _LOGGER.debug("(zone %i) %s", zoneNumber, zoneInfo["status"])
         return results
@@ -422,11 +433,12 @@ class EnvisalinkClient:
         return op.state == op.State.SUCCEEDED
 
     async def process_command_queue(self):
-        """Manage processing of commands to be issued to the EVL.  Commands are serialized to the EVL to avoid
-        overwhelming it and to make it easy to pair up responses (since there are no sequence numbers for requests).
+        """Manage processing of commands to be issued to the EVL.  Commands are serialized to
+        the EVL to avoid overwhelming it and to make it easy to pair up responses (since there
+        are no sequence numbers for requests).
 
-        Operations that fail due to a recoverable error (e.g. buffer overruns) will be re-tried with a backoff.
-        """
+        Operations that fail due to a recoverable error (e.g. buffer overruns) will be re-tried
+        with a backoff."""
         _LOGGER.info("Command processing task started.")
 
         while not self._shutdown:
@@ -443,12 +455,19 @@ class EnvisalinkClient:
                     timeout = op.expiryTime - now
 
                     if op.state == self.Operation.State.SENT:
-                        # Still waiting on a response from the EVL so break out of loop and wait for the response
+                        # Still waiting on a response from the EVL so break out of loop and wait
+                        # for the response
                         if now >= op.expiryTime:
                             # Timeout waiting for response from the EVL so fail the command,
                             # This is likely due to the EVL becoming unresponsive so tear down the
                             # connection to start a recovery.
-                            _LOGGER.error(f"Command '{op.cmd}' failed due to timeout waiting for response from EVL")
+                            _LOGGER.error(
+                                (
+                                    "Command '%s' failed due to timeout waiting for response "
+                                    "from EVL"
+                                ),
+                                op.cmd,
+                            )
                             op.state = self.Operation.State.FAILED
                             await self.disconnect()
                         break
@@ -499,11 +518,20 @@ class EnvisalinkClient:
         if self._commandQueue:
             op = self._commandQueue[0]
             if cmd and op.cmd != cmd:
-                _LOGGER.error(f"Command acknowledgement received is different for a different command ({cmd}) than was issued ({op.cmd})")
+                _LOGGER.error(
+                    (
+                        "Command acknowledgement received is different for a different command "
+                        "(%s) than was issued (%s)"
+                    ),
+                    cmd,
+                    op.cmd,
+                )
             else:
                 op.state = self.Operation.State.SUCCEEDED
         else:
-            _LOGGER.error(f"Command acknowledgement received for '{cmd}' when no command was issued.")
+            _LOGGER.error(
+                f"Command acknowledgement received for '{cmd}' when no command was issued."
+            )
 
         # Wake up the command processing task to process this result
         self._commandEvent.set()
@@ -530,7 +558,9 @@ class EnvisalinkClient:
                     # Tag the command to be retried in the future by the command processor task
                     op.state = self.Operation.State.RETRY
                     op.retryTime = time.time() + op.retryDelay
-                    _LOGGER.warn(f"Command '{op.cmd} {op.data}' failed; retry in {op.retryDelay} seconds.")
+                    _LOGGER.warn(
+                        f"Command '{op.cmd} {op.data}' failed; retry in {op.retryDelay} seconds."
+                    )
         else:
             _LOGGER.error("Command/system error received when no command is active.")
 

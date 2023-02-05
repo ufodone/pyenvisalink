@@ -83,7 +83,7 @@ evl_ResponseTypes = {
     "%03": {
         "type": "system",
         "name": "Realtime CID Event",
-        "description": "A system event has happened that is signaled to either the Envisalerts servers or the central monitoring station",
+        "description": "A system event has happened that is signaled to either the Envisalerts servers or the central monitoring station",  # noqa: E501
         "handler": "realtime_cid_event",
     },
     "%FF": {
@@ -100,7 +100,7 @@ evl_ResponseTypes = {
     "^01": {
         "type": "envisalink",
         "name": "Change Default Partition",
-        "description": "Change the partition which keystrokes are sent to when using the virtual keypad.",
+        "description": "Change the partition which keystrokes are sent to when using the virtual keypad.",  # noqa: E501
         "handler": "command_response",
     },
     "^02": {
@@ -112,14 +112,13 @@ evl_ResponseTypes = {
     "^03": {
         "type": "envisalink",
         "name": "Keypress to Specific Partition",
-        "description": "This will send a keystroke to the panel from an arbitrary partition. Use this if you don"
-        "t want to change the TPI default partition.",
+        "description": "This will send a keystroke to the panel from an arbitrary partition. Use this if you don't want to change the TPI default partition.",  # noqa: E501
         "handler": "command_response",
     },
     "^0C": {
         "type": "envisalink",
         "name": "Response for Invalid Command",
-        "description": "This response is returned when an invalid command number is passed to Envisalink",
+        "description": "This response is returned when an invalid command number is passed to Envisalink",  # noqa: E501
         "handler": "command_response",
     },
 }
@@ -128,7 +127,7 @@ evl_TPI_Response_Codes = {
     "00": {"retry": False, "msg": "Command Accepted"},
     "01": {
         "retry": True,
-        "msg": "Receive Buffer Overrun (a command is received while another is still being processed)",
+        "msg": "Receive Buffer Overrun (a command is received while another is still being processed)",  # noqa: E501
     },
     "02": {"retry": False, "msg": "Unknown Command"},
     "03": {

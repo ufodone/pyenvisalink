@@ -135,7 +135,11 @@ async def handle_cli_client(client_reader, client_writer):
 
 
 def accept_http_client(client_reader, client_writer):
-    log.info(f"Accepted connection on http endpoint: client_reader={client_reader}, client_writer={client_writer}")
+    log.info(
+        "Accepted connection on http endpoint: client_reader=%s, client_writer=%s",
+        client_reader,
+        client_writer,
+    )
     task = asyncio.Task(handle_http_client(client_reader, client_writer))
     clients[task] = (client_reader, client_writer)
 
@@ -149,7 +153,11 @@ def accept_http_client(client_reader, client_writer):
 
 
 def accept_cli_client(client_reader, client_writer):
-    log.info(f"Accepted connection on cli endpoint: client_reader={client_reader}, client_writer={client_writer}")
+    log.info(
+        "Accepted connection on cli endpoint: client_reader=%s, client_writer=%s",
+        client_reader,
+        client_writer,
+    )
     task = asyncio.Task(handle_cli_client(client_reader, client_writer))
     clients[task] = (client_reader, client_writer)
 
@@ -187,7 +195,9 @@ async def main():
 
 if __name__ == "__main__":
     log = logging.getLogger("")
-    formatter = logging.Formatter("%(asctime)s %(levelname)s " + "[%(module)s:%(lineno)d] %(message)s")
+    formatter = logging.Formatter(
+        "%(asctime)s %(levelname)s " + "[%(module)s:%(lineno)d] %(message)s"
+    )
     # setup console logging
     log.setLevel(logging.DEBUG)
     ch = logging.StreamHandler()
