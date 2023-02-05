@@ -4,9 +4,14 @@ import logging
 import re
 import time
 
-from .dsc_envisalinkdefs import (evl_ArmModes, evl_Commands, evl_PanicTypes,
-                                 evl_ResponseTypes, evl_TPI_Response_Codes,
-                                 evl_verboseTrouble)
+from .dsc_envisalinkdefs import (
+    evl_ArmModes,
+    evl_Commands,
+    evl_PanicTypes,
+    evl_ResponseTypes,
+    evl_TPI_Response_Codes,
+    evl_verboseTrouble,
+)
 from .envisalink_base_client import EnvisalinkClient
 
 _LOGGER = logging.getLogger(__name__)

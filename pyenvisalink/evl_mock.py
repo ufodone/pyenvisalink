@@ -7,7 +7,7 @@ from mock_server_dsc import DscServer
 from mock_server_honeywell import HoneywellServer
 
 EVL_VERSION = 4
-#MOCK_TYPE = "HONEYWELL"
+# MOCK_TYPE = "HONEYWELL"
 MOCK_TYPE = "DSC"
 PASSWORD = "12345"
 

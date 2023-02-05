@@ -2,8 +2,7 @@ import json
 import logging
 
 from pyenvisalink import AlarmState
-from pyenvisalink.dsc_envisalinkdefs import (evl_ResponseTypes,
-                                             evl_verboseTrouble)
+from pyenvisalink.dsc_envisalinkdefs import evl_ResponseTypes, evl_verboseTrouble
 
 _LOGGER = logging.getLogger(__name__)
 
