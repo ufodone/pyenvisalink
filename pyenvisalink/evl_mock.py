@@ -2,14 +2,11 @@ import asyncio
 import base64
 import logging
 import re
+import sys
 
-from mock_server_dsc import DscServer
-from mock_server_honeywell import HoneywellServer
-
-EVL_VERSION = 4
-# MOCK_TYPE = "HONEYWELL"
-MOCK_TYPE = "DSC"
-PASSWORD = "12345"
+from .alarm_panel import EnvisalinkAlarmPanel
+from .mock_server_dsc import DscServer
+from .mock_server_honeywell import HoneywellServer
 
 log = logging.getLogger(__name__)
 
@@ -78,7 +75,7 @@ async def handle_client(client_reader, client_writer):
 
 
 async def handle_http_client(client_reader, client_writer):
-    key = base64.b64encode(bytes(f"user:{PASSWORD}", "utf-8")).decode("ascii")
+    key = base64.b64encode(bytes(f"{evl_username}:{evl_password}", "utf-8")).decode("ascii")
 
     data = await client_reader.read(n=1024)
     data = data.decode()
@@ -96,7 +93,9 @@ async def handle_http_client(client_reader, client_writer):
     else:
         m = re.search("GET /([0-9]*)", data)
         if m.group(1) == "2":
-            payload = f"<TITLE>Envisalink {EVL_VERSION}</TITLE>Security Subsystem - {MOCK_TYPE}<"
+            payload = (
+                f"<TITLE>Envisalink {evl_version}</TITLE>Security Subsystem - {evl_mock_type}<"
+            )
         elif m.group(1) == "3":
             payload = "Firmware Version: 1.2.3.4 MAC: 010203040506"
         else:
@@ -172,13 +171,15 @@ def accept_cli_client(client_reader, client_writer):
 
 async def main():
     global evl_server
-    if MOCK_TYPE == "DSC":
-        evl_server = DscServer(64, 1, PASSWORD)
+
+    if evl_mock_type == "DSC":
+        evl_server = DscServer(
+            EnvisalinkAlarmPanel.get_max_zones_by_version(evl_version), 1, evl_password
+        )
     else:
-        num_zones = 64
-        if EVL_VERSION == 4:
-            num_zones = 128
-        evl_server = HoneywellServer(num_zones, 1, PASSWORD)
+        evl_server = HoneywellServer(
+            EnvisalinkAlarmPanel.get_max_zones_by_version(evl_version), 1, evl_password
+        )
 
     server = await asyncio.start_server(accept_client, host=None, port=4025)
     await server.start_serving()
@@ -194,6 +195,22 @@ async def main():
 
 
 if __name__ == "__main__":
+    global evl_mock_type
+    global evl_username
+    global evl_password
+    global evl_version
+
+    if len(sys.argv) != 5:
+        print(f"Usage: {sys.argv[0]} panel_type version username password")
+        print("    panel_type: HONEYWELL | DSC")
+        print("    version: 3 | 4")
+        sys.exit(1)
+
+    evl_mock_type = sys.argv[1].upper()
+    evl_version = int(sys.argv[2])
+    evl_username = sys.argv[3]
+    evl_password = sys.argv[4]
+
     log = logging.getLogger("")
     formatter = logging.Formatter(
         "%(asctime)s %(levelname)s " + "[%(module)s:%(lineno)d] %(message)s"
