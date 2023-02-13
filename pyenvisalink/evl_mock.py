@@ -129,6 +129,12 @@ async def handle_cli_client(client_reader, client_writer):
 
         if cmd[0] == "write":
             evl_server.write_raw(cmd[1])
+        elif cmd[0] == "fault":
+            for idx in range(1, len(cmd)):
+                await evl_server.set_zone_state(int(cmd[idx]), True)
+        elif cmd[0] == "clear":
+            for idx in range(1, len(cmd)):
+                await evl_server.set_zone_state(int(cmd[idx]), False)
 
     log.info(f"Exiting reader loop; conns_open={conns_open}")
 
@@ -174,11 +180,11 @@ async def main():
 
     if evl_mock_type == "DSC":
         evl_server = DscServer(
-            EnvisalinkAlarmPanel.get_max_zones_by_version(evl_version), 1, evl_password
+            EnvisalinkAlarmPanel.get_max_zones_by_version(evl_version), 8, evl_password
         )
     else:
         evl_server = HoneywellServer(
-            EnvisalinkAlarmPanel.get_max_zones_by_version(evl_version), 1, evl_password
+            EnvisalinkAlarmPanel.get_max_zones_by_version(evl_version), 8, evl_password
         )
 
     server = await asyncio.start_server(accept_client, host=None, port=4025)

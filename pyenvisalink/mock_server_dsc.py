@@ -78,12 +78,6 @@ class DscServer(MockServer):
 
         return success
 
-    #    def is_partition_ready(self, partition: int) -> bool:
-    #        for zone in self._zone_status:
-    #            if not zone:
-    #                return False
-    #        return True
-
     def get_checksum(self, code, data) -> str:
         checksum = 0
         for ch in code + data:
@@ -114,18 +108,13 @@ class DscServer(MockServer):
         log.info(f"send: {response}")
         await self.write_raw(response)
 
-    def encode_zone_timers(self) -> str:
-        return self.encode_command(
-            "615",
-            "74FD94FF0000000075C200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",  # noqa: E501
-        )
-
     async def dump_zone_timers(self) -> bool:
         response = self.encode_command("500", "008")
         log.info(f"send: {response}")
         await self.send_response(response)
 
-        await self.send_response(self.encode_zone_timers())
+        response = self.encode_command("615", self.encode_zone_timers())
+        await self.send_response(response)
         return True
 
     async def poll(self) -> bool:
