@@ -135,6 +135,12 @@ async def handle_cli_client(client_reader, client_writer):
         elif cmd[0] == "clear":
             for idx in range(1, len(cmd)):
                 await evl_server.set_zone_state(int(cmd[idx]), False)
+        elif cmd[0] == "ready":
+            ready = evl_server.is_partition_ready(int(cmd[1]))
+            client_writer.write(f"{ready}\n".encode())
+        elif cmd[0] == "zoneinfo":
+            info = evl_server.zone_info()
+            client_writer.write(info.encode())
 
     log.info(f"Exiting reader loop; conns_open={conns_open}")
 

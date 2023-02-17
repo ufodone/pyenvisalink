@@ -47,10 +47,17 @@ class MockServer:
 
     def is_partition_ready(self, partition: int) -> bool:
         # TODO For now assume all zones belong to parition 1
-        for faulted in self._zone_states:
-            if faulted:
+        for status in self._zone_states:
+            if status["fault"]:
                 return False
         return True
+
+    def zone_info(self) -> str:
+        zones = ""
+        for idx, faulted in enumerate(self._zone_states, start=1):
+            zones += f"{idx:3}: {faulted}\n"
+
+        return zones
 
     def encode_zone_timers(self) -> str:
         now = time.time()
