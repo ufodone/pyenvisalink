@@ -130,7 +130,7 @@ class HoneywellServer(MockServer):
         return f"{line1:<16}{line2:<16}"
 
     def build_keypad_zone_fault_string(self, zone: int) -> str:
-        return self.build_keypad_string(f"FAULT {zone:02x} Zone {zone}", " ")
+        return self.build_keypad_string(f"FAULT {zone:02} Zone {zone}", " ")
 
     async def send_partition_state_update(self):
         # TODO: Only handles partition 1
@@ -184,7 +184,7 @@ class HoneywellServer(MockServer):
 
     async def send_keypad_update_for_faulted_zone(self, zone: int):
         await self.send_server_data(
-            "00", f"01,0008,{zone:02x},00,{self.build_keypad_zone_fault_string(zone)}"
+            "00", f"01,0008,{zone:02},00,{self.build_keypad_zone_fault_string(zone)}"
         )
 
     def get_next_faulted_zone(self) -> int:
