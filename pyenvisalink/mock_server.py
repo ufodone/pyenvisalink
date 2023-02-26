@@ -7,10 +7,11 @@ log = logging.getLogger(__name__)
 
 
 class MockServer:
-    def __init__(self, num_zones, num_partitions, password):
+    def __init__(self, num_zones, num_partitions, password, alarm_code):
         self._client_writer = None
 
         self._password = password
+        self._alarm_code = alarm_code
         self._logged_in = False
 
         self._num_zones = num_zones
@@ -35,6 +36,15 @@ class MockServer:
         raise NotImplementedError()
 
     async def process_command(self, line) -> bool:
+        raise NotImplementedError()
+
+    async def disarm(self):
+        raise NotImplementedError()
+
+    async def arm_away(self):
+        raise NotImplementedError()
+
+    async def arm_stay(self):
         raise NotImplementedError()
 
     async def write_raw(self, data):

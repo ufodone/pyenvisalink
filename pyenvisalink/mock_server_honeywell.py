@@ -2,7 +2,10 @@ import asyncio
 import logging
 import re
 
+from honeywell_envisalinkdefs import IconLED_Bitfield
 from mock_server import MockServer
+
+ARM_DELAY = 5
 
 CMD_KEYSTROKE = "key"
 CMD_POLL = "00"
@@ -21,11 +24,47 @@ log = logging.getLogger(__name__)
 
 
 class HoneywellServer(MockServer):
-    def __init__(self, num_zones, num_partitions, password):
-        super().__init__(num_zones, num_partitions, password)
+    def __init__(self, num_zones, num_partitions, password, alarm_code):
+        super().__init__(num_zones, num_partitions, password, alarm_code)
 
         self._keypad_task = None
         self._keypad_zone_index = 0
+        self._keystroke_buffers = []
+        for partition in range(num_partitions):
+            self._keystroke_buffers.append("")
+
+        self._keystroke_cmds = {
+            f"{alarm_code}1": self.disarm,
+            f"{alarm_code}2": self.arm_away,
+            f"{alarm_code}3": self.arm_stay,
+            f"{alarm_code}4": self.arm_max,
+            f"{alarm_code}7": self.arm_night,
+            f"{alarm_code}33": self.arm_night,
+            f"{alarm_code}A": self.panic_fire,
+            f"{alarm_code}B": self.panic_ambulance,
+            f"{alarm_code}C": self.panic_police,
+        }
+
+        self._led_state = IconLED_Bitfield()
+        self._led_state.alarm = 0
+        self._led_state.alarm_in_memory = 0
+        self._led_state.armed_away = 0
+        self._led_state.ac_present = 1
+        self._led_state.bypass = 0
+        self._led_state.chime = 0
+        self._led_state.not_used1 = 0
+        self._led_state.armed_zero_entry_delay = 0
+        self._led_state.alarm_fire_zone = 0
+        self._led_state.system_trouble = 0
+        self._led_state.not_used2 = 1
+        self._led_state.not_used3 = 1
+        self._led_state.ready = 1
+        self._led_state.fire = 0
+        self._led_state.low_battery = 0
+        self._led_state.armed_stay = 0
+
+        self._arm_countdown = 0
+        self._keypad_task_event = asyncio.Event()
 
     async def disconnected(self):
         if self._keypad_task:
@@ -55,7 +94,7 @@ class HoneywellServer(MockServer):
         elif cmd == CMD_DUMP_ZONE_TIMERS:  # Dump Zone Timers
             success = await self.dump_zone_timers()
         elif cmd == CMD_KEYPRESS_TO_PARTITION:  # Keypress to specific partition
-            success = await self.handle_keystroke_sequence()
+            success = await self.handle_keystroke_sequence(data)
         else:
             log.info(f"Unhandled command ({cmd}); data: {data}")
             return False
@@ -121,9 +160,19 @@ class HoneywellServer(MockServer):
         self._keypad_task = asyncio.create_task(self.keypad_updater(), name="keypad_updater")
         return True
 
-    async def handle_keystroke_sequence(self) -> bool:
-        # TODO
+    async def handle_keystroke_sequence(self, data) -> bool:
         await self.send_command_response(CMD_KEYPRESS_TO_PARTITION, ERR_SUCCESS)
+
+        data_arr = data.split(",")
+        partition = int(data_arr[0])
+        key = data_arr[1]
+        self._keystroke_buffers[partition] += key
+
+        action = self._keystroke_cmds.get(self._keystroke_buffers[partition])
+        if action:
+            await action()
+            self._keystroke_buffers[partition] = ""
+
         return True
 
     def build_keypad_string(self, line1: str, line2: str) -> str:
@@ -134,7 +183,7 @@ class HoneywellServer(MockServer):
 
     async def send_partition_state_update(self):
         # TODO: Only handles partition 1
-        part_info = "01" if self.is_partition_ready(1) else "00"
+        part_info = "01" if self._led_state.ready else "00"
         if self._num_partitions > 1:
             part_info += "00" * self._num_partitions
         await self.send_server_data("02", part_info)
@@ -165,11 +214,18 @@ class HoneywellServer(MockServer):
         await self.send_server_data("01", zone_info)
 
     async def set_zone_state(self, zone: int, faulted: bool):
-        is_ready = self.is_partition_ready(1)
-
         await super().set_zone_state(zone, faulted)
 
-        if is_ready != self.is_partition_ready(1):
+        is_ready = self.is_partition_ready(1)
+        if self._led_state.ready != is_ready:
+            self._led_state.ready = is_ready
+            if is_ready:
+                self._led_state.not_used2 = 1
+                self._led_state.not_used3 = 1
+            else:
+                self._led_state.not_used2 = 0
+                self._led_state.not_used3 = 0
+
             # Send a partition update if its state has changed
             await self.send_partition_state_update()
 
@@ -178,13 +234,15 @@ class HoneywellServer(MockServer):
         if faulted:
             await self.send_keypad_update_for_faulted_zone(zone)
             self._keypad_zone_index = 0
-        elif self.is_partition_ready(1):
+        elif self._led_state.ready:
             self._keypad_zone_index = 0
-            await self.send_server_data("00", "01,1C08,08,00,****DISARMED****  Ready to Arm  ")
+            await self.send_server_data(
+                "00", f"01,{self._led_state},08,00,****DISARMED****  Ready to Arm  "
+            )
 
     async def send_keypad_update_for_faulted_zone(self, zone: int):
         await self.send_server_data(
-            "00", f"01,0008,{zone:02},00,{self.build_keypad_zone_fault_string(zone)}"
+            "00", f"01,{self._led_state},{zone:02},00,{self.build_keypad_zone_fault_string(zone)}"
         )
 
     def get_next_faulted_zone(self) -> int:
@@ -195,13 +253,102 @@ class HoneywellServer(MockServer):
                 return zone
         return -1
 
+    def get_armed_message(self) -> str:
+        if self._led_state.armed_stay:
+            return "ARMED ***STAY***"
+        if self._led_state.armed_away:
+            return "ARMED ***AWAY***"
+        return "***UNKN***"
+
+    def get_arming_message(self) -> str:
+        return f"{self.get_armed_message()}May Exit Now {self._arm_countdown:03}"
+
     async def keypad_updater(self):
         while self._logged_in:
-            if self.is_partition_ready(1):
-                await self.send_server_data("00", "01,1C08,08,00,****DISARMED****  Ready to Arm  ")
+            if self._led_state.ready:
+                await self.send_server_data(
+                    "00", f"01,{self._led_state},08,00,****DISARMED****  Ready to Arm  "
+                )
+            elif self._arm_countdown > 0:
+                await self.send_server_data(
+                    "00",
+                    (
+                        f"01,{self._led_state},{self._arm_countdown:02},00,"
+                        f"{self.get_arming_message()}"
+                    ),
+                )
+
+            elif (
+                self._led_state.armed_away
+                or self._led_state.armed_stay
+                or self._led_state.armed_zero_entry_delay
+            ):
+                await self.send_server_data(
+                    "00", f"01,{self._led_state},08,00,{self.get_armed_message()}                "
+                )
             else:
                 faulted_zone = self.get_next_faulted_zone()
                 if faulted_zone >= 0:
                     await self.send_keypad_update_for_faulted_zone(faulted_zone + 1)
 
-            await asyncio.sleep(5)
+            delay = 5
+            if self._arm_countdown > 0:
+                self._arm_countdown -= 1
+                delay = 1
+                if self._arm_countdown == 0:
+                    self._led_state.not_used2 = 1
+                    self._led_state.not_used3 = 1
+            try:
+                await asyncio.wait_for(self._keypad_task_event.wait(), timeout=delay)
+                self._keypad_task_event.clear()
+            except asyncio.exceptions.TimeoutError:
+                pass
+
+    async def arm_stay(self):
+        log.info("arm_stay")
+        self._arm_countdown = ARM_DELAY
+        self._led_state.ready = 0
+        self._led_state.armed_stay = 1
+        self._led_state.not_used2 = 0
+        self._led_state.not_used3 = 0
+        self._keypad_task_event.set()
+        return True
+
+    async def arm_away(self):
+        log.info("arm_away")
+        self._arm_countdown = ARM_DELAY
+        self._led_state.ready = 0
+        self._led_state.armed_away = 1
+        self._led_state.not_used2 = 0
+        self._led_state.not_used3 = 0
+        self._keypad_task_event.set()
+        return True
+
+    async def arm_max(self):
+        # TODO
+        return True
+
+    async def arm_night(self):
+        # TODO
+        return True
+
+    async def disarm(self):
+        self._led_state.ready = 1
+        self._led_state.armed_away = 0
+        self._led_state.armed_stay = 0
+        self._led_state.not_used2 = 1
+        self._led_state.not_used3 = 1
+        self._keypad_task_event.set()
+        return True
+
+    async def panic_fire(self):
+        # TODO
+        return True
+
+    async def panic_ambulance(self):
+        # TODO
+        return True
+
+    async def panic_police(self):
+        # TODO
+        return True

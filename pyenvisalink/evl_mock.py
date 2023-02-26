@@ -135,6 +135,12 @@ async def handle_cli_client(client_reader, client_writer):
         elif cmd[0] == "clear":
             for idx in range(1, len(cmd)):
                 await evl_server.set_zone_state(int(cmd[idx]), False)
+        elif cmd[0] == "disarm":
+            await evl_server.disarm()
+        elif cmd[0] == "arm_away":
+            await evl_server.arm_away()
+        elif cmd[0] == "arm_stay":
+            await evl_server.arm_stay()
         elif cmd[0] == "ready":
             ready = evl_server.is_partition_ready(int(cmd[1]))
             client_writer.write(f"{ready}\n".encode())
@@ -186,11 +192,11 @@ async def main():
 
     if evl_mock_type == "DSC":
         evl_server = DscServer(
-            EnvisalinkAlarmPanel.get_max_zones_by_version(evl_version), 8, evl_password
+            EnvisalinkAlarmPanel.get_max_zones_by_version(evl_version), 8, evl_password, evl_code
         )
     else:
         evl_server = HoneywellServer(
-            EnvisalinkAlarmPanel.get_max_zones_by_version(evl_version), 8, evl_password
+            EnvisalinkAlarmPanel.get_max_zones_by_version(evl_version), 8, evl_password, evl_code
         )
 
     server = await asyncio.start_server(accept_client, host=None, port=4025)
@@ -212,8 +218,8 @@ if __name__ == "__main__":
     global evl_password
     global evl_version
 
-    if len(sys.argv) != 5:
-        print(f"Usage: {sys.argv[0]} panel_type version username password")
+    if len(sys.argv) != 6:
+        print(f"Usage: {sys.argv[0]} panel_type version username password alarm_code")
         print("    panel_type: HONEYWELL | DSC")
         print("    version: 3 | 4")
         sys.exit(1)
@@ -222,6 +228,7 @@ if __name__ == "__main__":
     evl_version = int(sys.argv[2])
     evl_username = sys.argv[3]
     evl_password = sys.argv[4]
+    evl_code = sys.argv[5]
 
     log = logging.getLogger("")
     formatter = logging.Formatter(

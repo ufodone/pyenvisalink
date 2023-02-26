@@ -19,8 +19,8 @@ log = logging.getLogger(__name__)
 
 
 class DscServer(MockServer):
-    def __init__(self, num_zones, num_partitions, password):
-        super().__init__(num_zones, num_partitions, password)
+    def __init__(self, num_zones, num_partitions, password, alarm_code):
+        super().__init__(num_zones, num_partitions, password, alarm_code)
 
         self._zone_status = []
         for zone in range(0, num_zones):
