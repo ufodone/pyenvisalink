@@ -3,6 +3,44 @@
 #
 # This code is under the terms of the GPL v3 license.
 
+import ctypes
+
+
+class KeypadLED_Bitfield(ctypes.LittleEndianStructure):
+    _fields_ = [
+        ("ready", ctypes.c_uint8, 1),
+        ("armed", ctypes.c_uint8, 1),
+        ("memory", ctypes.c_uint8, 1),
+        ("bypass", ctypes.c_uint8, 1),
+        ("trouble", ctypes.c_uint8, 1),
+        ("program", ctypes.c_uint8, 1),
+        ("fire", ctypes.c_uint8, 1),
+        ("backlight", ctypes.c_uint8, 1),
+    ]
+
+    def __str__(self) -> str:
+        b = bytes(self)
+        return f"{int(b[0]):02x}"
+
+
+class KeypadLED_Flags(ctypes.Union):
+    _fields_ = [("b", KeypadLED_Bitfield), ("asByte", ctypes.c_uint8)]
+    _anonymous_ = "b"
+
+    def __str__(self) -> str:
+        return (
+            f"0x{int(self.asByte):02x}"
+            f" ready={self.ready}"
+            f" armed={self.armed}"
+            f" memory={self.memory}"
+            f" bypass={self.bypass}"
+            f" trouble={self.trouble}"
+            f" program={self.program}"
+            f" fire={self.fire}"
+            f" backlight={self.backlight}"
+        )
+
+
 evl_Commands = {
     "KeepAlive": "000",
     "StatusReport": "001",
@@ -343,6 +381,19 @@ evl_ResponseTypes = {
         "name": "Zone Bypass",
         "handler": "zone_bypass_update",
         "state_change": True,
+        "status": None,
+    },
+    # KEYPAD UPDATES
+    "510": {
+        "name": "Keypad LED State",
+        "handler": "keypad_led_state_update",
+        "state_change": False,
+        "status": None,
+    },
+    "511": {
+        "name": "Keypad LED FLASH State",
+        "handler": "keypad_led_flash_state_update",
+        "state_change": False,
         "status": None,
     },
 }
