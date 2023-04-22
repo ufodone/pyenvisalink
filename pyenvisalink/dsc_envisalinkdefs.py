@@ -64,6 +64,7 @@ evl_ArmModes = {
         "name": "Arm Away",
         "status": {
             "armed_away": True,
+            "armed_stay": False,
             "armed_zero_entry_delay": False,
             "alpha": "Arm Away",
             "exit_delay": False,
@@ -73,6 +74,7 @@ evl_ArmModes = {
     "1": {
         "name": "Arm Stay",
         "status": {
+            "armed_away": False,
             "armed_stay": True,
             "armed_zero_entry_delay": False,
             "alpha": "Arm Stay",
@@ -84,6 +86,7 @@ evl_ArmModes = {
         "name": "Arm Zero Entry Away",
         "status": {
             "armed_away": True,
+            "armed_stay": False,
             "armed_zero_entry_delay": True,
             "alpha": "Arm Zero Entry Away",
             "exit_delay": False,
@@ -93,6 +96,7 @@ evl_ArmModes = {
     "3": {
         "name": "Arm Zero Entry Stay",
         "status": {
+            "armed_away": False,
             "armed_stay": True,
             "armed_zero_entry_delay": True,
             "alpha": "Arm Zero Entry Stay",
