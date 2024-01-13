@@ -128,7 +128,7 @@ async def handle_cli_client(client_reader, client_writer):
         log.info(f"{cmd}")
 
         if cmd[0] == "write":
-            evl_server.write_raw(cmd[1])
+            await evl_server.write_raw(cmd[1] + "\r\n")
         elif cmd[0] == "fault":
             for idx in range(1, len(cmd)):
                 await evl_server.set_zone_state(int(cmd[idx]), True)
@@ -225,7 +225,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     evl_mock_type = sys.argv[1].upper()
-    evl_version = int(sys.argv[2])
+    evl_version = sys.argv[2]
     evl_username = sys.argv[3]
     evl_password = sys.argv[4]
     evl_code = sys.argv[5]

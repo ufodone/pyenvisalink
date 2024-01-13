@@ -39,6 +39,7 @@ class HoneywellServer(MockServer):
             f"{alarm_code}3": self.arm_stay,
             f"{alarm_code}4": self.arm_max,
             f"{alarm_code}7": self.arm_night,
+            f"{alarm_code}9": self.toggle_chime,
             f"{alarm_code}33": self.arm_night,
             f"{alarm_code}A": self.panic_fire,
             f"{alarm_code}B": self.panic_ambulance,
@@ -51,7 +52,7 @@ class HoneywellServer(MockServer):
         self._led_state.armed_away = 0
         self._led_state.ac_present = 1
         self._led_state.bypass = 0
-        self._led_state.chime = 0
+        self._led_state.chime = 1
         self._led_state.not_used1 = 0
         self._led_state.armed_zero_entry_delay = 0
         self._led_state.alarm_fire_zone = 0
@@ -232,6 +233,15 @@ class HoneywellServer(MockServer):
         await self.send_zone_state_update(zone)
 
         if faulted:
+            if (
+                self._led_state.armed_stay
+                or self._led_state.armed_away
+                or self._led_state.armed_zero_entry_delay
+            ):
+                self._led_state.alarm = 1
+                self._led_state.alarm_in_memory = 1
+                self._led_state.not_used2 = 0
+                self._led_state.not_used3 = 0
             await self.send_keypad_update_for_faulted_zone(zone)
             self._keypad_zone_index = 0
         elif self._led_state.ready:
@@ -278,6 +288,11 @@ class HoneywellServer(MockServer):
                     ),
                 )
 
+            elif not self.is_partition_ready(1):
+                faulted_zone = self.get_next_faulted_zone()
+                if faulted_zone >= 0:
+                    await self.send_keypad_update_for_faulted_zone(faulted_zone + 1)
+
             elif (
                 self._led_state.armed_away
                 or self._led_state.armed_stay
@@ -286,10 +301,6 @@ class HoneywellServer(MockServer):
                 await self.send_server_data(
                     "00", f"01,{self._led_state},08,00,{self.get_armed_message()}                "
                 )
-            else:
-                faulted_zone = self.get_next_faulted_zone()
-                if faulted_zone >= 0:
-                    await self.send_keypad_update_for_faulted_zone(faulted_zone + 1)
 
             delay = 5
             if self._arm_countdown > 0:
@@ -330,6 +341,11 @@ class HoneywellServer(MockServer):
 
     async def arm_night(self):
         # TODO
+        return True
+
+    async def toggle_chime(self):
+        self._led_state.chime = (self._led_state.chime + 1) % 2
+        self._keypad_task_event.set()
         return True
 
     async def disarm(self):
