@@ -67,7 +67,7 @@ class HoneywellClient(EnvisalinkClient):
         cmd = {}
         _LOGGER.debug(str.format("Data received:{0}", rawInput))
 
-        parse = re.match('([%\^].+)\$', rawInput)
+        parse = re.match(r'([%\^].+)\$', rawInput)
         if parse and parse.group(1):
             # keep first sentinel char to tell difference between tpi and
             # Envisalink command responses.  Drop the trailing $ sentinel.

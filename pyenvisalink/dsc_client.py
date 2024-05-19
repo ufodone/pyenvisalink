@@ -98,7 +98,7 @@ class DSCClient(EnvisalinkClient):
         cmd = {}
         dataoffset = 0
         if rawInput != '':
-            if re.match('\d\d:\d\d:\d\d\s', rawInput):
+            if re.match(r'\d\d:\d\d:\d\d\s', rawInput):
                 dataoffset = dataoffset + 9
             code = rawInput[dataoffset:dataoffset+3]
             cmd['code'] = code
