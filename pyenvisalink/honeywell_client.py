@@ -212,3 +212,8 @@ class HoneywellClient(EnvisalinkClient):
         _LOGGER.debug(cidEvent['type'] + ' value is ' + str(zoneOrUser))
         
         return cidEvent
+
+    def handle_debug_info(self, code, data):
+        """Handle when the envisalink sends a debug message indicating that it received
+        a malformed message from the panel."""
+        _LOGGER.debug(f'EVL received a malformed message from the panel; code={code} data={data}')
