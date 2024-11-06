@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name="pyenvisalink",
-    version="4.7",
+    version="4.8",
     description=(
         "A python3 library for running asynchronus communications with envisalink "
         "alarm control panel modules."
