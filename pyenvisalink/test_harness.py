@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
+import logging
 import signal
 import sys
 from pyenvisalink import EnvisalinkAlarmPanel
 
 #This is a test harness for the pyenvisalink library.  It will assist in testing the library against both Honeywell and DSC.
+
+loggingconfig = {'level': 'DEBUG',
+             'format': '%(asctime)s %(levelname)s <%(name)s %(module)s %(funcName)s> %(message)s',
+             'datefmt': '%a, %d %b %Y %H:%M:%S'}
+
+logging.basicConfig(**loggingconfig)
 
 #Get Details from the user...
 ip = input("Please input the IP address of your envisalink device: ")
