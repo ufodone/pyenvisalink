@@ -65,7 +65,7 @@ class DscServer(MockServer):
         elif cmd == "032":  # Partition Arm Control - Zero Entry Delay
             success = await self.arm_max()
         elif cmd == "040":  # Partition Disarm Control
-            success = await self.disarm()
+            success = await self.disarm(data)
         elif cmd == "060":  # Trigger Panic Alarm
             success = await self.trigger_panic_alarm()
         elif cmd == "071":  # Send Keystroke String
@@ -189,9 +189,13 @@ class DscServer(MockServer):
 
         return True
 
-    async def disarm(self) -> bool:
+    async def disarm(self, data: str) -> bool:
         response = self.encode_command("500", "040")
         await self.send_response(response)
+
+        if data[1:] != self._alarm_code:
+            log.info("Invalid alarm code provided.")
+            return True
 
         response = self.encode_command("510", "81")
         await self.send_response(response)
