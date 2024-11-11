@@ -1,8 +1,9 @@
 import asyncio
 import logging
 import re
+import time
 
-from honeywell_envisalinkdefs import IconLED_Bitfield
+from honeywell_envisalinkdefs import Beep_Bitfield, IconLED_Bitfield
 from mock_server import MockServer
 
 ARM_DELAY = 5
@@ -30,8 +31,9 @@ class HoneywellServer(MockServer):
         self._keypad_task = None
         self._keypad_zone_index = 0
         self._keystroke_buffers = []
+        self._keystroke_task = None
         for partition in range(num_partitions):
-            self._keystroke_buffers.append("")
+            self._keystroke_buffers.append({"keys": "", "last_key_time": 0})
 
         self._keystroke_cmds = {
             f"{alarm_code}1": self.disarm,
@@ -64,6 +66,10 @@ class HoneywellServer(MockServer):
         self._led_state.low_battery = 0
         self._led_state.armed_stay = 0
 
+        self._beep_state = Beep_Bitfield()
+        self._beep_state.beeps = 0
+        self._beep_state.armed_night = 0
+
         self._arm_countdown = 0
         self._keypad_task_event = asyncio.Event()
 
@@ -71,6 +77,10 @@ class HoneywellServer(MockServer):
         if self._keypad_task:
             self._keypad_task.cancel()
             self._keypad_task = None
+
+        if self._keystroke_task:
+            self._keystroke_task.cancel()
+            self._keystroke_task = None
 
         await super().disconnected()
 
@@ -159,20 +169,21 @@ class HoneywellServer(MockServer):
 
         # Start task to send Virtual Keypad Updates
         self._keypad_task = asyncio.create_task(self.keypad_updater(), name="keypad_updater")
+
+        # Start task to process keystrokes
+        self._keystroke_task = asyncio.create_task(
+            self.keystroke_processor(), name="keystroke_processor"
+        )
         return True
 
     async def handle_keystroke_sequence(self, data) -> bool:
-        await self.send_command_response(CMD_KEYPRESS_TO_PARTITION, ERR_SUCCESS)
-
         data_arr = data.split(",")
         partition = int(data_arr[0])
         key = data_arr[1]
-        self._keystroke_buffers[partition] += key
-
-        action = self._keystroke_cmds.get(self._keystroke_buffers[partition])
-        if action:
-            await action()
-            self._keystroke_buffers[partition] = ""
+        key_info = self._keystroke_buffers[partition]
+        key_info["keys"] += key
+        key_info["last_key_time"] = time.time()
+        await self.send_command_response(CMD_KEYPRESS_TO_PARTITION, ERR_SUCCESS)
 
         return True
 
@@ -252,7 +263,8 @@ class HoneywellServer(MockServer):
 
     async def send_keypad_update_for_faulted_zone(self, zone: int):
         await self.send_server_data(
-            "00", f"01,{self._led_state},{zone:02},00,{self.build_keypad_zone_fault_string(zone)}"
+            "00",
+            f"01,{self._led_state},{zone:02},{self._beep_state},{self.build_keypad_zone_fault_string(zone)}",  # noqa: E501
         )
 
     def get_next_faulted_zone(self) -> int:
@@ -264,6 +276,8 @@ class HoneywellServer(MockServer):
         return -1
 
     def get_armed_message(self) -> str:
+        if self._beep_state.armed_night:
+            return "ARMED ***NIGHT-STAY***"
         if self._led_state.armed_stay:
             return "ARMED ***STAY***"
         if self._led_state.armed_away:
@@ -277,13 +291,14 @@ class HoneywellServer(MockServer):
         while self._logged_in:
             if self._led_state.ready:
                 await self.send_server_data(
-                    "00", f"01,{self._led_state},08,00,****DISARMED****  Ready to Arm  "
+                    "00",
+                    f"01,{self._led_state},08,{self._beep_state},****DISARMED****  Ready to Arm  ",
                 )
             elif self._arm_countdown > 0:
                 await self.send_server_data(
                     "00",
                     (
-                        f"01,{self._led_state},{self._arm_countdown:02},00,"
+                        f"01,{self._led_state},{self._arm_countdown:02},{self._beep_state},"
                         f"{self.get_arming_message()}"
                     ),
                 )
@@ -299,7 +314,8 @@ class HoneywellServer(MockServer):
                 or self._led_state.armed_zero_entry_delay
             ):
                 await self.send_server_data(
-                    "00", f"01,{self._led_state},08,00,{self.get_armed_message()}                "
+                    "00",
+                    f"01,{self._led_state},08,{self._beep_state},{self.get_armed_message()}                ",  # noqa: E501
                 )
 
             delay = 5
@@ -312,6 +328,28 @@ class HoneywellServer(MockServer):
             try:
                 await asyncio.wait_for(self._keypad_task_event.wait(), timeout=delay)
                 self._keypad_task_event.clear()
+            except asyncio.exceptions.TimeoutError:
+                pass
+
+    async def keystroke_processor(self):
+        while self._logged_in:
+            now = time.time()
+            for partition in range(len(self._keystroke_buffers)):
+                key_info = self._keystroke_buffers[partition]
+
+                last_key_time = key_info["last_key_time"]
+                if last_key_time and (now - last_key_time) > 0.5:
+                    # Only process keystrokes if it's been more than 500ms since the last keystroke
+                    action = self._keystroke_cmds.get(key_info["keys"])
+                    if action:
+                        await action()
+                    else:
+                        log.warn(f"Unrecognized keystrokes: '{key_info['keys']}'")
+                    self._keystroke_buffers[partition]["keys"] = ""
+                    self._keystroke_buffers[partition]["last_key_time"] = 0
+
+            try:
+                await asyncio.sleep(0.1)
             except asyncio.exceptions.TimeoutError:
                 pass
 
@@ -340,7 +378,14 @@ class HoneywellServer(MockServer):
         return True
 
     async def arm_night(self):
-        # TODO
+        log.info("arm_night")
+        self._arm_countdown = ARM_DELAY
+        self._led_state.ready = 0
+        self._led_state.armed_stay = 1
+        self._led_state.not_used2 = 0
+        self._led_state.not_used3 = 0
+        self._beep_state.armed_night = 1
+        self._keypad_task_event.set()
         return True
 
     async def toggle_chime(self):
@@ -354,6 +399,7 @@ class HoneywellServer(MockServer):
         self._led_state.armed_stay = 0
         self._led_state.not_used2 = 1
         self._led_state.not_used3 = 1
+        self._beep_state.armed_night = 0
         self._keypad_task_event.set()
         return True
 

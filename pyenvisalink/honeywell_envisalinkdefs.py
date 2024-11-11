@@ -4,6 +4,7 @@
 # This code is under the terms of the GPL v3 license.
 import ctypes
 
+c_uint8 = ctypes.c_uint8
 c_uint16 = ctypes.c_uint16
 
 
@@ -34,6 +35,22 @@ class IconLED_Bitfield(ctypes.LittleEndianStructure):
 
 class IconLED_Flags(ctypes.Union):
     _fields_ = [("b", IconLED_Bitfield), ("asShort", c_uint16)]
+    _anonymous_ = "b"
+
+
+class Beep_Bitfield(ctypes.LittleEndianStructure):
+    _fields_ = [
+        ("beeps", c_uint8, 4),
+        ("armed_night", c_uint8, 1),
+    ]
+
+    def __str__(self) -> str:
+        b = bytes(self)
+        return f"{b[0]:02x}"
+
+
+class Beep_Flags(ctypes.Union):
+    _fields_ = [("b", Beep_Bitfield), ("asByte", c_uint8)]
     _anonymous_ = "b"
 
 
