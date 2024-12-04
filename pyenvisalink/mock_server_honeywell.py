@@ -40,7 +40,7 @@ class HoneywellServer(MockServer):
             f"{alarm_code}2": self.arm_away,
             f"{alarm_code}3": self.arm_stay,
             f"{alarm_code}4": self.arm_max,
-            f"{alarm_code}7": self.arm_night,
+            f"{alarm_code}7": self.arm_instant,
             f"{alarm_code}9": self.toggle_chime,
             f"{alarm_code}33": self.arm_night,
             f"{alarm_code}A": self.panic_fire,
@@ -388,6 +388,17 @@ class HoneywellServer(MockServer):
         self._keypad_task_event.set()
         return True
 
+    async def arm_instant(self):
+        log.info("arm_night")
+        self._arm_countdown = ARM_DELAY
+        self._led_state.ready = 0
+        self._led_state.armed_stay = 1
+        self._led_state.not_used2 = 0
+        self._led_state.not_used3 = 0
+        self._led_state.armed_zero_entry_delay = 1
+        self._keypad_task_event.set()
+        return True
+
     async def toggle_chime(self):
         self._led_state.chime = (self._led_state.chime + 1) % 2
         self._keypad_task_event.set()
@@ -399,6 +410,7 @@ class HoneywellServer(MockServer):
         self._led_state.armed_stay = 0
         self._led_state.not_used2 = 1
         self._led_state.not_used3 = 1
+        self._led_state.armed_zero_entry_delay = 0
         self._beep_state.armed_night = 0
         self._keypad_task_event.set()
         return True
