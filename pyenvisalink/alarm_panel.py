@@ -13,9 +13,11 @@ from .const import (
     MAX_PARTITIONS,
     PANEL_TYPE_DSC,
     PANEL_TYPE_HONEYWELL,
+    PANEL_TYPE_UNO,
 )
 from .dsc_client import DSCClient
 from .honeywell_client import HoneywellClient
+from .uno_client import UnoClient
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -76,13 +78,6 @@ class EnvisalinkAlarmPanel:
         self._partitionStateChangeCallback = self._defaultCallback
         self._zoneBypassStateChangeCallback = self._defaultCallback
         self._cidEventCallback = self._defaultCallback
-
-        loggingconfig = {
-            "level": "DEBUG",
-            "format": "%(asctime)s %(levelname)s <%(name)s %(module)s %(funcName)s> %(message)s",
-        }
-
-        logging.basicConfig(**loggingconfig)
 
     @property
     def host(self):
@@ -245,9 +240,10 @@ class EnvisalinkAlarmPanel:
         _LOGGER.debug("Callback has not been set by client.")
 
     async def start(self):
-        result = await self.discover_panel_type()
-        if result != self.ConnectionResult.SUCCESS:
-            return result
+        if self._panelType is None:
+            result = await self.discover_panel_type()
+            if result != self.ConnectionResult.SUCCESS:
+                return result
 
         self._alarmState = AlarmState.get_initial_alarm_state(
             max(EVL3_MAX_ZONES, EVL4_MAX_ZONES), MAX_PARTITIONS
@@ -262,7 +258,10 @@ class EnvisalinkAlarmPanel:
             )
         )
         self._syncConnect: asyncio.Future[self.ConnectionResult] = asyncio.Future()
-        if self._panelType == PANEL_TYPE_HONEYWELL:
+        if self._panelType == PANEL_TYPE_UNO:
+            self._client = UnoClient(self)
+            self._client.start()
+        elif self._panelType == PANEL_TYPE_HONEYWELL:
             self._client = HoneywellClient(self)
             self._client.start()
         elif self._panelType == PANEL_TYPE_DSC:
@@ -360,12 +359,12 @@ class EnvisalinkAlarmPanel:
         else:
             _LOGGER.error(COMMAND_ERR)
 
-    async def toggle_zone_bypass(self, zone):
+    async def bypass_zone(self, zone, partition, enable):
         """Public method to toggle a zone's bypass state."""
         if not self._zoneBypassEnabled:
             _LOGGER.error(COMMAND_ERR)
         elif self._client:
-            await self._client.toggle_zone_bypass(zone)
+            await self._client.bypass_zone(zone, partition, enable)
         else:
             _LOGGER.error(COMMAND_ERR)
 
@@ -403,22 +402,41 @@ class EnvisalinkAlarmPanel:
 
                 # Try and scrape the HTML for the EVL version and panel type
                 html = await resp.text()
-                version_regex = r"<TITLE>Envisalink ([^<]+)<\/TITLE>"
+                success = True
 
-                m = re.search(version_regex, html)
+                m = re.search(r"<TITLE>([^<]+)<\/TITLE>", html)
                 if m is None or m.lastindex != 1:
-                    _LOGGER.warn("Unable to determine version: raw HTML: %s", html)
+                    success = False
+                elif m.group(1).upper() == PANEL_TYPE_UNO:
+                    self._evlVersion = 0
+                    self._panelType = PANEL_TYPE_UNO
                 else:
-                    self._evlVersion = m.group(1)
+                    m = re.search(r"Envisalink (.+)", m.group(1))
+                    if m and m.lastindex == 1:
+                        self._evlVersion = m.group(1)
 
-                panel_regex = ">Security Subsystem - ([^<]*)<"
-                m = re.search(panel_regex, html)
-                if m is None or m.lastindex != 1:
-                    _LOGGER.warn("Unable to determine panel type: raw HTML: %s", html)
-                else:
-                    self._panelType = m.group(1).upper()
-                    if self._panelType not in [PANEL_TYPE_DSC, PANEL_TYPE_HONEYWELL]:
+                    panel_regex = ">Security Subsystem - ([^<]*)<"
+                    m = re.search(panel_regex, html)
+                    if m and m.lastindex == 1:
+                        panelType = m.group(1).upper()
+                        # Handle the UNO STANDALONE variant
+                        if PANEL_TYPE_UNO in panelType:
+                            self._panelType = PANEL_TYPE_UNO
+                        else:
+                            self._panelType = panelType
+                    else:
+                        success = False
+
+                if success:
+                    if self._panelType not in [
+                        PANEL_TYPE_DSC,
+                        PANEL_TYPE_HONEYWELL,
+                        PANEL_TYPE_UNO,
+                    ]:
                         _LOGGER.warn("Unrecognized panel type: %s", self._panelType)
+                else:
+                    _LOGGER.warn("Unable to parse panel info: raw HTML: %s", html)
+
         except Exception as ex:
             _LOGGER.error("Unable to fetch panel information: %s", ex)
             return self.ConnectionResult.CONNECTION_FAILED
@@ -495,14 +513,20 @@ class EnvisalinkAlarmPanel:
             )
             if data:
                 data = data.decode("ascii").strip()
-                if HoneywellClient.detect(data):
-                    self._panelType = PANEL_TYPE_HONEYWELL
-                    _LOGGER.info("Panel type: %s", self._panelType)
-                    return self.ConnectionResult.SUCCESS
-                elif DSCClient.detect(data):
+                if DSCClient.detect(data):
                     self._panelType = PANEL_TYPE_DSC
                     _LOGGER.info("Panel type: %s", self._panelType)
                     return self.ConnectionResult.SUCCESS
+                elif HoneywellClient.detect(data):
+                    # This could be either a Honeywell or UNO panel so try and query the
+                    # web interface on the device to determine which one it is.
+                    if not await self.discover_device_details():
+                        # Unable to determine type so default to Honeywell
+                        self._panelType = PANEL_TYPE_HONEYWELL
+
+                    _LOGGER.info("Panel type: %s", self._panelType)
+                    return self.ConnectionResult.SUCCESS
+
             _LOGGER.error("Unable to determine panel type from connection data: '%s'", data)
         except ConnectionResetError:
             _LOGGER.error(
