@@ -369,6 +369,7 @@ class HoneywellClient(EnvisalinkClient):
         _LOGGER.debug("Partition is " + str(partitionNumber))
         _LOGGER.debug(cidEvent["type"] + " value is " + str(zoneOrUser))
 
+        self._alarmPanel.callback_realtime_cid_event(cidEvent)
         return cidEvent
 
     def is_zone_open_from_zonedump(self, zone, ticks) -> bool:
