@@ -7,6 +7,7 @@ import sys
 from .alarm_panel import EnvisalinkAlarmPanel
 from .mock_server_dsc import DscServer
 from .mock_server_honeywell import HoneywellServer
+from .mock_server_uno import UnoServer
 
 log = logging.getLogger(__name__)
 
@@ -194,10 +195,16 @@ async def main():
         evl_server = DscServer(
             EnvisalinkAlarmPanel.get_max_zones_by_version(evl_version), 8, evl_password, evl_code
         )
-    else:
+    elif evl_mock_type == "HONEYWELL":
         evl_server = HoneywellServer(
             EnvisalinkAlarmPanel.get_max_zones_by_version(evl_version), 8, evl_password, evl_code
         )
+    elif evl_mock_type == "UNO":
+        evl_server = UnoServer(
+            EnvisalinkAlarmPanel.get_max_zones_by_version(evl_version), 8, evl_password, evl_code
+        )
+    else:
+        raise KeyError(f"Unknown panel type: {evl_mock_type}")
 
     server = await asyncio.start_server(accept_client, host=None, port=4025)
     await server.start_serving()
@@ -220,7 +227,7 @@ if __name__ == "__main__":
 
     if len(sys.argv) != 6:
         print(f"Usage: {sys.argv[0]} panel_type version username password alarm_code")
-        print("    panel_type: HONEYWELL | DSC")
+        print("    panel_type: HONEYWELL | DSC | UNO")
         print("    version: 3 | 4")
         sys.exit(1)
 

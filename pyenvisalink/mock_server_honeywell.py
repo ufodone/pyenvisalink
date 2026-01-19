@@ -73,6 +73,8 @@ class HoneywellServer(MockServer):
         self._arm_countdown = 0
         self._keypad_task_event = asyncio.Event()
 
+        self._include_all_zones_in_update = False
+
     async def disconnected(self):
         if self._keypad_task:
             self._keypad_task.cancel()
@@ -195,7 +197,17 @@ class HoneywellServer(MockServer):
 
     async def send_partition_state_update(self):
         # TODO: Only handles partition 1
-        part_info = "01" if self._led_state.ready else "00"
+        if self._led_state.ready:
+            part_info = "01"
+        elif self._led_state.armed_away:
+            part_info = "05"
+        elif self._led_state.armed_stay:
+            part_info = "04"
+        elif self._led_state.armed_zero_entry_delay:
+            part_info = "06"
+        else:
+            part_info = "03"
+
         if self._num_partitions > 1:
             part_info += "00" * self._num_partitions
         await self.send_server_data("02", part_info)
@@ -206,7 +218,7 @@ class HoneywellServer(MockServer):
         for idx in range(self._num_zones):
             if self._zone_states[zone]["fault"]:
                 faulted_zones.append(zone)
-                if len(faulted_zones) == 4:
+                if not self._include_all_zones_in_update and len(faulted_zones) == 4:
                     # Simulate the EVL only seeming to include 4 zones in the updates
                     break
             zone = (zone + 1) % self._num_zones
@@ -294,6 +306,7 @@ class HoneywellServer(MockServer):
                     "00",
                     f"01,{self._led_state},08,{self._beep_state},****DISARMED****  Ready to Arm  ",
                 )
+                await self.send_partition_state_update()
             elif self._arm_countdown > 0:
                 await self.send_server_data(
                     "00",
@@ -317,6 +330,7 @@ class HoneywellServer(MockServer):
                     "00",
                     f"01,{self._led_state},08,{self._beep_state},{self.get_armed_message()}                ",  # noqa: E501
                 )
+                await self.send_partition_state_update()
 
             delay = 5
             if self._arm_countdown > 0:
@@ -358,6 +372,7 @@ class HoneywellServer(MockServer):
         self._arm_countdown = ARM_DELAY
         self._led_state.ready = 0
         self._led_state.armed_stay = 1
+        self._led_state.armed_away = 0
         self._led_state.not_used2 = 0
         self._led_state.not_used3 = 0
         self._keypad_task_event.set()
@@ -367,6 +382,7 @@ class HoneywellServer(MockServer):
         log.info("arm_away")
         self._arm_countdown = ARM_DELAY
         self._led_state.ready = 0
+        self._led_state.armed_stay = 0
         self._led_state.armed_away = 1
         self._led_state.not_used2 = 0
         self._led_state.not_used3 = 0

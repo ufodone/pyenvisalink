@@ -18,7 +18,9 @@ class MockServer:
         self._num_partitions = num_partitions
         self._alarm_state = AlarmState.get_initial_alarm_state(num_zones, num_partitions)
 
-        self._zone_states = [{"fault": False, "changed": 0.0} for idx in range(num_zones)]
+        self._zone_states = [
+            {"fault": False, "changed": 0.0, "bypassed": False} for idx in range(num_zones)
+        ]
 
     def connected(self, client_writer):
         self._client_writer = client_writer
