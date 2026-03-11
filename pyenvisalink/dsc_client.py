@@ -70,16 +70,31 @@ class DSCClient(EnvisalinkClient):
         """Send a keepalive command to reset it's watchdog timer."""
         await self.queue_command(evl_Commands["KeepAlive"], "")
 
+    async def _wake_panel(self, partitionNumber):
+        """Wake DSC panel from keypad blanking state before sending commands.
+
+        DSC panels enter a low-power display-off (blanking) mode after
+        inactivity. TPI arm/disarm commands sent while blanked are rejected
+        with error 024 (system not ready to arm). Sending '#' wakes the
+        panel, equivalent to pressing # on the physical keypad.
+        """
+        _LOGGER.debug("Sending '#' keypress to wake panel from possible blanking state")
+        await self.keypresses_to_partition(partitionNumber, "#")
+        await asyncio.sleep(1)
+
     async def arm_stay_partition(self, code, partitionNumber):
         """Public method to arm/stay a partition."""
+        await self._wake_panel(partitionNumber)
         await self.queue_command(evl_Commands["ArmStay"], str(partitionNumber), code)
 
     async def arm_away_partition(self, code, partitionNumber):
         """Public method to arm/away a partition."""
+        await self._wake_panel(partitionNumber)
         await self.queue_command(evl_Commands["ArmAway"], str(partitionNumber), code)
 
     async def arm_max_partition(self, code, partitionNumber):
         """Public method to arm/max a partition."""
+        await self._wake_panel(partitionNumber)
         await self.queue_command(evl_Commands["ArmMax"], str(partitionNumber), code)
 
     async def arm_night_partition(self, code, partitionNumber, mode=None):
@@ -88,6 +103,7 @@ class DSCClient(EnvisalinkClient):
 
     async def disarm_partition(self, code, partitionNumber):
         """Public method to disarm a partition."""
+        await self._wake_panel(partitionNumber)
         await self.queue_command(evl_Commands["Disarm"], str(partitionNumber) + str(code), code)
 
     async def panic_alarm(self, panicType):
