@@ -4,6 +4,7 @@ import json
 import re
 import asyncio
 import datetime
+import time
 from pyenvisalink import EnvisalinkClient
 from pyenvisalink.dsc_envisalinkdefs import *
 
@@ -14,9 +15,15 @@ from asyncio import ensure_future
 class DSCClient(EnvisalinkClient):
     """Represents a dsc alarm client."""
 
+    # Grace period (seconds) after a partition event before declaring blanking.
+    # Prevents false positives during arming transitions (exit delay) where
+    # the partition temporarily reports not-ready.
+    _BLANKING_GRACE_SECS = 35.0
+
     def __init__(self, panel, loop):
         self._refreshZoneByassState = False
         self._zoneBypassRefreshTask = None
+        self._lastPartitionEvent = 0
         super().__init__(panel, loop)
 
     def to_chars(self, string):
@@ -56,20 +63,79 @@ class DSCClient(EnvisalinkClient):
                 self.dump_zone_timers()
             await asyncio.sleep(self._alarmPanel.zone_timer_interval)
 
+    @property
+    def _keypad_blanking(self):
+        """Detect probable keypad blanking state.
+
+        When keypad blanking is enabled, the EVL stops receiving partition
+        state updates.  We detect this purely by checking that no partition
+        event has been received within the grace period.
+
+        Sending '#' when the panel is not actually blanking is harmless
+        in both armed and disarmed states, so false positives only add a
+        small delay.
+        """
+        # Don't declare blanking until we've received at least one partition
+        # event — avoids false positive during initial startup.
+        if not self._lastPartitionEvent:
+            return False
+        if (time.time() - self._lastPartitionEvent) < self._BLANKING_GRACE_SECS:
+            return False
+        return True
+
+    def _wake_panel(self, partitionNumber):
+        """Wake DSC panel from keypad blanking if detected.
+
+        Sends '#' keypress to wake the panel from its low-power display-off
+        (blanking) state.  _cachedCode is cleared before sending to prevent
+        the 900 (EnterCode) event — triggered by '#' on an armed panel —
+        from consuming the code needed by a subsequent TPI command.  Callers
+        must re-set _cachedCode after the wake if needed.
+
+        This is a no-op when the panel is not blanking, so users without
+        keypad blanking enabled incur no delay.
+
+        Returns True if a wake keypress was sent (caller should delay).
+        """
+        if not self._keypad_blanking:
+            return False
+        _LOGGER.debug("Keypad blanking detected — sending '#' to wake panel")
+        self._cachedCode = None
+        self.keypresses_to_partition(partitionNumber, "#")
+        return True
+
+    def _send_command_with_code(self, code, cmd, data):
+        """Send a command and set _cachedCode right before sending.
+
+        Used by call_later callbacks so that _cachedCode is set at the
+        time the command is actually issued, not when it was scheduled.
+        """
+        self._cachedCode = code
+        self.send_command(cmd, data)
+
     def arm_stay_partition(self, code, partitionNumber):
         """Public method to arm/stay a partition."""
-        self._cachedCode = code
-        self.send_command(evl_Commands['ArmStay'], str(partitionNumber))
+        if self._wake_panel(partitionNumber):
+            self._eventLoop.call_later(1, self._send_command_with_code, code, evl_Commands['ArmStay'], str(partitionNumber))
+        else:
+            self._cachedCode = code
+            self.send_command(evl_Commands['ArmStay'], str(partitionNumber))
 
     def arm_away_partition(self, code, partitionNumber):
         """Public method to arm/away a partition."""
-        self._cachedCode = code
-        self.send_command(evl_Commands['ArmAway'], str(partitionNumber))
+        if self._wake_panel(partitionNumber):
+            self._eventLoop.call_later(1, self._send_command_with_code, code, evl_Commands['ArmAway'], str(partitionNumber))
+        else:
+            self._cachedCode = code
+            self.send_command(evl_Commands['ArmAway'], str(partitionNumber))
 
     def arm_max_partition(self, code, partitionNumber):
         """Public method to arm/max a partition."""
-        self._cachedCode = code
-        self.send_command(evl_Commands['ArmMax'], str(partitionNumber))
+        if self._wake_panel(partitionNumber):
+            self._eventLoop.call_later(1, self._send_command_with_code, code, evl_Commands['ArmMax'], str(partitionNumber))
+        else:
+            self._cachedCode = code
+            self.send_command(evl_Commands['ArmMax'], str(partitionNumber))
 
     def arm_night_partition(self, code, partitionNumber):
         """Public method to arm/max a partition."""
@@ -77,8 +143,11 @@ class DSCClient(EnvisalinkClient):
 
     def disarm_partition(self, code, partitionNumber):
         """Public method to disarm a partition."""
-        self._cachedCode = code
-        self.send_command(evl_Commands['Disarm'], str(partitionNumber) + str(code))
+        if self._wake_panel(partitionNumber):
+            self._eventLoop.call_later(1, self._send_command_with_code, code, evl_Commands['Disarm'], str(partitionNumber) + str(code))
+        else:
+            self._cachedCode = code
+            self.send_command(evl_Commands['Disarm'], str(partitionNumber) + str(code))
 
     def panic_alarm(self, panicType):
         """Public method to raise a panic alarm."""
@@ -137,6 +206,14 @@ class DSCClient(EnvisalinkClient):
         dt = datetime.datetime.now().strftime('%H%M%m%d%y')
         self.send_command(evl_Commands['SetTime'], dt)
         self.send_command(evl_Commands['StatusReport'], '')
+        # Wake the panel from possible keypad blanking.  StatusReport only
+        # queries the EVL's cached state which may be stale if the panel is
+        # blanking.  A '#' keystroke forces the panel to broadcast current
+        # partition events (650/651/652/655).  The delay must be long enough
+        # for the StatusReport zone dump (610 events for all zones) to
+        # complete, otherwise the EVL rejects the keypress with a buffer
+        # overrun error (502/010).
+        self._eventLoop.call_later(5, self.keypresses_to_partition, 1, "#")
 
         if self._alarmPanel._zoneBypassEnabled:
             """ Initiate request for zone bypass information """
@@ -171,6 +248,7 @@ class DSCClient(EnvisalinkClient):
     def handle_partition_state_change(self, code, data):
         """Handle when the envisalink sends us a partition change."""
         """Event 650-674, 652 is an exception, because 2 bytes are passed for partition and zone type."""
+        self._lastPartitionEvent = time.time()
         if code == '652':
             parse = re.match('^[0-9]{2}$', data)
             if parse:
