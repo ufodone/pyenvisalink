@@ -28,6 +28,7 @@ class EnvisalinkClient(asyncio.Protocol):
         self._shutdown = False
         self._cachedCode = None
         self._reconnect_task = None
+        self._readBuffer = ''
 
     def start(self):
         """Public method for initiating connectivity with the envisalink."""
@@ -102,6 +103,7 @@ class EnvisalinkClient(asyncio.Protocol):
     def disconnect(self):
         """Internal method for forcing connection closure if hung."""
         _LOGGER.debug('Closing connection with server...')
+        self._readBuffer = ''
         if self._transport:
             self._transport.close()
             
@@ -170,19 +172,24 @@ class EnvisalinkClient(asyncio.Protocol):
         
     def data_received(self, data):
         """asyncio callback for any data recieved from the envisalink."""
-        if data != '':
+        if data:
             try:
-                fullData = data.decode('ascii').strip()
-                cmd = {}
+                fullData = data.decode('ascii')
                 result = ''
                 _LOGGER.debug('----------------------------------------')
                 _LOGGER.debug(str.format('RX < {0}', fullData))
-                lines = str.split(fullData, '\r\n')
+                # Buffer reads across chunks: split on CRLF and put the trailing
+                # partial back so frames spanning two recv() calls reassemble.
+                self._readBuffer += fullData
+                lines = self._readBuffer.split('\r\n')
+                self._readBuffer = lines.pop()
             except:
                 _LOGGER.error('Received invalid message. Skipping.')
                 return
 
             for line in lines:
+                if not line:
+                    continue
                 cmd = self.parseHandler(line)
             
                 try:
